@@ -15,3 +15,7 @@ data/game_logs/*/
 !data/game_logs/example-ai-ai-renju/**
 !data/game_logs/example-human-ai-free/
 !data/game_logs/example-human-ai-free/**
+!data/game_logs/extreme-1/
+!data/game_logs/extreme-1/**
+!data/game_logs/extreme-2/
+!data/game_logs/extreme-2/**

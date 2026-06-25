@@ -116,6 +116,90 @@ CPU-only 五子棋 / 连珠 AI 项目。
 ![Human vs AI Freestyle 035](data/game_logs/example-human-ai-free/035.jpg)
 ![Human vs AI Freestyle 036](data/game_logs/example-human-ai-free/036.jpg)
 
+## Extreme Results
+
+下面两组是 `--mode extreme` 的 freestyle 对局结果截图。它们使用 extreme 搜索链路：递归 VCF、bitboard 极限候选裁剪、迭代加深和置换表。
+
+### Extreme Result 1
+
+来源目录：`data/game_logs/extreme-1`
+
+![Extreme Result 1 001](data/game_logs/extreme-1/001.jpg)
+![Extreme Result 1 002](data/game_logs/extreme-1/002.jpg)
+![Extreme Result 1 003](data/game_logs/extreme-1/003.jpg)
+![Extreme Result 1 004](data/game_logs/extreme-1/004.jpg)
+![Extreme Result 1 005](data/game_logs/extreme-1/005.jpg)
+![Extreme Result 1 006](data/game_logs/extreme-1/006.jpg)
+![Extreme Result 1 007](data/game_logs/extreme-1/007.jpg)
+![Extreme Result 1 008](data/game_logs/extreme-1/008.jpg)
+![Extreme Result 1 009](data/game_logs/extreme-1/009.jpg)
+![Extreme Result 1 010](data/game_logs/extreme-1/010.jpg)
+![Extreme Result 1 011](data/game_logs/extreme-1/011.jpg)
+![Extreme Result 1 012](data/game_logs/extreme-1/012.jpg)
+![Extreme Result 1 013](data/game_logs/extreme-1/013.jpg)
+![Extreme Result 1 014](data/game_logs/extreme-1/014.jpg)
+![Extreme Result 1 015](data/game_logs/extreme-1/015.jpg)
+![Extreme Result 1 016](data/game_logs/extreme-1/016.jpg)
+![Extreme Result 1 017](data/game_logs/extreme-1/017.jpg)
+![Extreme Result 1 018](data/game_logs/extreme-1/018.jpg)
+![Extreme Result 1 019](data/game_logs/extreme-1/019.jpg)
+![Extreme Result 1 020](data/game_logs/extreme-1/020.jpg)
+![Extreme Result 1 021](data/game_logs/extreme-1/021.jpg)
+![Extreme Result 1 022](data/game_logs/extreme-1/022.jpg)
+![Extreme Result 1 023](data/game_logs/extreme-1/023.jpg)
+![Extreme Result 1 024](data/game_logs/extreme-1/024.jpg)
+![Extreme Result 1 025](data/game_logs/extreme-1/025.jpg)
+![Extreme Result 1 026](data/game_logs/extreme-1/026.jpg)
+![Extreme Result 1 027](data/game_logs/extreme-1/027.jpg)
+![Extreme Result 1 028](data/game_logs/extreme-1/028.jpg)
+![Extreme Result 1 029](data/game_logs/extreme-1/029.jpg)
+
+### Extreme Result 2
+
+来源目录：`data/game_logs/extreme-2`
+
+![Extreme Result 2 001](data/game_logs/extreme-2/001.jpg)
+![Extreme Result 2 002](data/game_logs/extreme-2/002.jpg)
+![Extreme Result 2 003](data/game_logs/extreme-2/003.jpg)
+![Extreme Result 2 004](data/game_logs/extreme-2/004.jpg)
+![Extreme Result 2 005](data/game_logs/extreme-2/005.jpg)
+![Extreme Result 2 006](data/game_logs/extreme-2/006.jpg)
+![Extreme Result 2 007](data/game_logs/extreme-2/007.jpg)
+![Extreme Result 2 008](data/game_logs/extreme-2/008.jpg)
+![Extreme Result 2 009](data/game_logs/extreme-2/009.jpg)
+![Extreme Result 2 010](data/game_logs/extreme-2/010.jpg)
+![Extreme Result 2 011](data/game_logs/extreme-2/011.jpg)
+![Extreme Result 2 012](data/game_logs/extreme-2/012.jpg)
+![Extreme Result 2 013](data/game_logs/extreme-2/013.jpg)
+![Extreme Result 2 014](data/game_logs/extreme-2/014.jpg)
+![Extreme Result 2 015](data/game_logs/extreme-2/015.jpg)
+![Extreme Result 2 016](data/game_logs/extreme-2/016.jpg)
+![Extreme Result 2 017](data/game_logs/extreme-2/017.jpg)
+![Extreme Result 2 018](data/game_logs/extreme-2/018.jpg)
+![Extreme Result 2 019](data/game_logs/extreme-2/019.jpg)
+![Extreme Result 2 020](data/game_logs/extreme-2/020.jpg)
+![Extreme Result 2 021](data/game_logs/extreme-2/021.jpg)
+![Extreme Result 2 022](data/game_logs/extreme-2/022.jpg)
+![Extreme Result 2 023](data/game_logs/extreme-2/023.jpg)
+![Extreme Result 2 024](data/game_logs/extreme-2/024.jpg)
+![Extreme Result 2 025](data/game_logs/extreme-2/025.jpg)
+![Extreme Result 2 026](data/game_logs/extreme-2/026.jpg)
+![Extreme Result 2 027](data/game_logs/extreme-2/027.jpg)
+![Extreme Result 2 028](data/game_logs/extreme-2/028.jpg)
+![Extreme Result 2 029](data/game_logs/extreme-2/029.jpg)
+![Extreme Result 2 030](data/game_logs/extreme-2/030.jpg)
+![Extreme Result 2 031](data/game_logs/extreme-2/031.jpg)
+![Extreme Result 2 032](data/game_logs/extreme-2/032.jpg)
+![Extreme Result 2 033](data/game_logs/extreme-2/033.jpg)
+![Extreme Result 2 034](data/game_logs/extreme-2/034.jpg)
+![Extreme Result 2 035](data/game_logs/extreme-2/035.jpg)
+![Extreme Result 2 036](data/game_logs/extreme-2/036.jpg)
+![Extreme Result 2 037](data/game_logs/extreme-2/037.jpg)
+![Extreme Result 2 038](data/game_logs/extreme-2/038.jpg)
+![Extreme Result 2 039](data/game_logs/extreme-2/039.jpg)
+![Extreme Result 2 040](data/game_logs/extreme-2/040.jpg)
+![Extreme Result 2 041](data/game_logs/extreme-2/041.jpg)
+
 ## Quickstart
 
 ### 1. 创建环境
