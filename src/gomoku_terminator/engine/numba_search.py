@@ -46,18 +46,41 @@ def set_numba_threads(threads: int) -> int:
 
 
 def search_empty_benchmark(depth: int, threads: int) -> NumbaSearchResult:
-    """运行空棋盘 Numba 根节点并行 benchmark。
+    """兼容旧测试的空棋盘 benchmark。"""
 
-    第一版 Numba 路径使用 `int8[15,15]` 矩阵，目的是先验证根节点 `prange`
-    并行和 CPU 利用率。后续再把这条路径压到 4xuint64。
+    return search_benchmark(depth=depth, threads=threads, scenario="empty")
+
+
+def search_benchmark(depth: int, threads: int, scenario: str = "midgame") -> NumbaSearchResult:
+    """运行 Numba 根节点并行 benchmark。
+
+    默认使用中盘局面而不是空棋盘。空棋盘只有天元一个根分支，根节点并行没有
+    工作量；中盘局面有更多根候选，才能让 24 核更容易跑起来。
     """
 
     if nb is None:
         raise RuntimeError("Numba is not installed")
     actual_threads = set_numba_threads(threads)
     board = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.int8)
+    if scenario == "midgame":
+        _fill_midgame_board(board)
     row, col, score, nodes = _parallel_root_search(board, BLACK, max(1, int(depth)))
     return NumbaSearchResult(int(row), int(col), int(score), int(depth), int(nodes), actual_threads)
+
+
+def _fill_midgame_board(board: np.ndarray) -> None:
+    """填充一个固定中盘 benchmark 局面。
+
+    这个局面只用于压测搜索，不代表开局库或真实棋谱。它提供足够多的根候选，
+    让 `prange` 有分支可分发。
+    """
+
+    black = ((7, 7), (7, 8), (8, 7), (6, 8), (8, 9), (5, 6), (9, 8), (6, 6))
+    white = ((7, 6), (8, 8), (6, 7), (9, 7), (5, 8), (8, 5), (9, 9))
+    for row, col in black:
+        board[row, col] = BLACK
+    for row, col in white:
+        board[row, col] = WHITE
 
 
 if nb is not None:
@@ -145,7 +168,7 @@ if nb is not None:
     @nb.njit(cache=False)
     def _generate_moves(board: np.ndarray, moves: np.ndarray) -> int:
         occupied = 0
-        marker = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.int8)
+        marker = np.zeros(BOARD_SIZE * BOARD_SIZE, dtype=np.int8)
         count = 0
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE):
@@ -159,10 +182,12 @@ if nb is not None:
                         r = row + dr
                         c = col + dc
                         if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
-                            if board[r, c] == EMPTY and marker[r, c] == 0:
-                                marker[r, c] = 1
-                                moves[count] = r * BOARD_SIZE + c
-                                count += 1
+                            if board[r, c] == EMPTY:
+                                index = r * BOARD_SIZE + c
+                                if marker[index] == 0:
+                                    marker[index] = 1
+                                    moves[count] = index
+                                    count += 1
         if occupied == 0:
             moves[0] = 7 * BOARD_SIZE + 7
             return 1

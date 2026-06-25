@@ -134,16 +134,30 @@ python main.py benchmark --backend python --time-limit 0.05
 使用 24 线程：
 
 ```bash
-python main.py benchmark --backend numba --threads 24
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
 也可以通过环境变量指定：
 
 ```bash
-NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24
+NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
 当前 Numba benchmark 会先 warmup 一次 JIT 编译，再正式计时。它的目的不是替代人类可读搜索，而是验证 CPU 并行路径、线程数和 NPS。
+
+可选场景：
+
+```bash
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario empty
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
+```
+
+建议：
+
+- `--scenario empty` 只有天元一个根分支，不适合压 24 核。
+- `--scenario midgame` 有更多根候选，适合观察 CPU 并行性能。
+- `--depth 5` 适合日常性能检查。
+- `--depth 6` 是压力测试，可能耗时明显变长。
 
 ### 8. 运行测试
 
@@ -192,8 +206,9 @@ python3 -B -m pytest -q -p no:cacheprovider
 python main.py play --human black --rule renju --time-limit 5 --threads 24
 python main.py play --human white --rule renju --time-limit 5 --log-file data/game_logs/human_white.json
 python main.py selfplay --games 100 --time-limit 1 --threads 24 --log-dir data/game_logs --no-ui
-python main.py benchmark --backend numba --threads 24
-NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
+NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
+python main.py benchmark --backend numba --threads 24 --depth 6 --scenario midgame
 python scripts/build_opening_book.py
 python scripts/download_opening_sources.py
 python scripts/profile_search.py

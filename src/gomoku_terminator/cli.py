@@ -24,6 +24,8 @@ class RuntimeConfig:
     max_moves: int = 225
     position: str | None = None
     backend: str = "python"
+    depth: int = 5
+    scenario: str = "midgame"
     replay_file: str | None = None
 
 
@@ -60,6 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark = subparsers.add_parser("benchmark", help="run engine benchmark")
     benchmark.add_argument("--position")
     benchmark.add_argument("--backend", choices=("python", "numba"), default="python")
+    benchmark.add_argument("--depth", type=int, default=5)
+    benchmark.add_argument("--scenario", choices=("empty", "midgame"), default="midgame")
 
     return parser
 
@@ -81,6 +85,8 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         max_moves=getattr(args, "max_moves", 225),
         position=getattr(args, "position", None),
         backend=getattr(args, "backend", "python"),
+        depth=getattr(args, "depth", 5),
+        scenario=getattr(args, "scenario", "midgame"),
         replay_file=getattr(args, "replay_file", None),
     )
 

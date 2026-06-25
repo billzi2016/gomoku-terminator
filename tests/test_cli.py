@@ -29,8 +29,10 @@ def test_selfplay_max_moves_argument():
 
 
 def test_benchmark_backend_argument():
-    argv = _normalize_global_options(["benchmark", "--backend", "numba"])
+    argv = _normalize_global_options(["benchmark", "--backend", "numba", "--depth", "6", "--scenario", "midgame"])
     args = build_parser().parse_args(argv)
     config = config_from_args(args)
 
     assert config.backend == "numba"
+    assert config.depth == 6
+    assert config.scenario == "midgame"
