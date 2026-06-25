@@ -14,40 +14,7 @@ CPU-only 五子棋 / 连珠 AI 项目。
 
 开局库：`data/opening_book.json` 已经包含 Renju 26 个标准开局形和保守前几手推荐，并支持加载时 8 向对称扩展。来源、重建命令和当前边界写在 [data/README.md](/Users/bizi/Desktop/GitHub/gomoku-terminator/data/README.md)。注意它还不是完整职业深度定式库，后续深库必须从许可证清楚的 SGF/RenLib 数据源导入。
 
-棋力说明：UI/selfplay 默认 `--ai-depth 4`；`--time-limit` 和 `--ai-depth` 没有 CLI 硬上限，只做最小值保护。最终测试建议用 `--ai-depth 10 --time-limit 10 --threads 24`。`numba_bitboard` 在进入深搜前会先做即时胜、即时防守和双威胁检查，并在 bitboard 递归内做邻域候选、战术排序和分层 Top-K 截断。当前大致进入中级水准，但还不是职业强度，后续仍要做迭代加深、VCF/VCT 和更完整的 Renju 高速禁手过滤。
-
-## Example Game
-
-下面是 `data/game_logs/example` 中保存的一局完整 UI 截图序列。每一步都是整窗截图，包含棋盘、最后一手绿色标记、右侧 AI 统计和底部参数信息。
-
-![Move 001](data/game_logs/example/001.jpg)
-![Move 002](data/game_logs/example/002.jpg)
-![Move 003](data/game_logs/example/003.jpg)
-![Move 004](data/game_logs/example/004.jpg)
-![Move 005](data/game_logs/example/005.jpg)
-![Move 006](data/game_logs/example/006.jpg)
-![Move 007](data/game_logs/example/007.jpg)
-![Move 008](data/game_logs/example/008.jpg)
-![Move 009](data/game_logs/example/009.jpg)
-![Move 010](data/game_logs/example/010.jpg)
-![Move 011](data/game_logs/example/011.jpg)
-![Move 012](data/game_logs/example/012.jpg)
-![Move 013](data/game_logs/example/013.jpg)
-![Move 014](data/game_logs/example/014.jpg)
-![Move 015](data/game_logs/example/015.jpg)
-![Move 016](data/game_logs/example/016.jpg)
-![Move 017](data/game_logs/example/017.jpg)
-![Move 018](data/game_logs/example/018.jpg)
-![Move 019](data/game_logs/example/019.jpg)
-![Move 020](data/game_logs/example/020.jpg)
-![Move 021](data/game_logs/example/021.jpg)
-![Move 022](data/game_logs/example/022.jpg)
-![Move 023](data/game_logs/example/023.jpg)
-![Move 024](data/game_logs/example/024.jpg)
-![Move 025](data/game_logs/example/025.jpg)
-![Move 026](data/game_logs/example/026.jpg)
-![Move 027](data/game_logs/example/027.jpg)
-![Move 028](data/game_logs/example/028.jpg)
+棋力说明：UI/selfplay 默认 `--ai-depth 4`；`--time-limit` 和 `--ai-depth` 没有 CLI 硬上限，只做最小值保护。最终测试建议用 `--ai-depth 10 --time-limit 10 --threads 24`。`numba_bitboard` 在进入深搜前会先做即时胜、即时防守和双威胁检查，减少浅搜漏杀。当前还不是职业强度，后续仍要做迭代加深、VCF/VCT 和更完整的 Renju 高速禁手过滤。
 
 ## Quickstart
 
@@ -105,7 +72,7 @@ python main.py play --human black --rule renju --time-limit 5
 提高实战强度：
 
 ```bash
-python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
 ```
 
 最终测试强度：
@@ -195,13 +162,13 @@ python main.py benchmark --backend python --time-limit 0.05
 使用 24 线程：
 
 ```bash
-python main.py benchmark --backend numba --threads 24 --depth 10 --scenario midgame
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
 也可以通过环境变量指定：
 
 ```bash
-NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --depth 10 --scenario midgame
+NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
 当前 Numba benchmark 会先 warmup 一次 JIT 编译，再正式计时。它的目的不是替代人类可读搜索，而是验证 CPU 并行路径、线程数和 NPS。
@@ -209,21 +176,22 @@ NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --dep
 4xuint64 bitboard 后端：
 
 ```bash
-python main.py benchmark --backend numba_bitboard --threads 24 --depth 10 --scenario midgame
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
 ```
 
 可选场景：
 
 ```bash
-python main.py benchmark --backend numba --threads 24 --depth 10 --scenario empty
-python main.py benchmark --backend numba --threads 24 --depth 10 --scenario midgame
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario empty
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
 建议：
 
 - `--scenario empty` 只有天元一个根分支，不适合压 24 核。
 - `--scenario midgame` 有更多根候选，适合观察 CPU 并行性能。
-- `--depth 10` 是当前推荐强度测试深度，适合验证候选裁剪、排序和多线程路径。
+- `--depth 5` 适合日常性能检查。
+- `--depth 6` 是压力测试，可能耗时明显变长。
 
 ### 8. 运行测试
 
@@ -272,9 +240,9 @@ python3 -B -m pytest -q -p no:cacheprovider
 python main.py play --human black --rule renju --time-limit 5 --threads 24
 python main.py play --human white --rule renju --time-limit 5 --log-file data/game_logs/human_white.json
 python main.py selfplay --games 100 --time-limit 1 --threads 24 --log-dir data/game_logs --no-ui
-python main.py benchmark --backend numba --threads 24 --depth 10 --scenario midgame
-NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --depth 10 --scenario midgame
-python main.py benchmark --backend numba_bitboard --threads 24 --depth 10 --scenario midgame
+python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
+NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
+python main.py benchmark --backend numba --threads 24 --depth 6 --scenario midgame
 python scripts/build_opening_book.py
 python scripts/download_opening_sources.py
 python scripts/profile_search.py

@@ -23,3 +23,12 @@ def test_numba_bitboard_benchmark_runs():
     assert 0 <= result.col < 15
     assert result.nodes >= 1
     assert result.threads >= 1
+
+
+@pytest.mark.skipif(not bitboard_backend_available(), reason="numba is not installed")
+def test_numba_bitboard_prunes_midgame_candidates():
+    result = run_bitboard_benchmark(depth=4, threads=1, scenario="midgame")
+
+    assert 0 <= result.row < 15
+    assert 0 <= result.col < 15
+    assert result.nodes < 250_000

@@ -15,11 +15,11 @@ from gomoku_terminator.ui.ai_worker import _search_with_engine
 from gomoku_terminator.ui.board_view import SCREEN_SIZE, draw_board, get_board_coords
 
 PANEL_HEIGHT = 112
-STATS_WIDTH = 560
+STATS_WIDTH = 780
 BUTTON_HEIGHT = 42
 BUTTON_WIDTH = 116
 STATS_ROW_HEIGHT = 34
-STATS_DETAIL_HEIGHT = 172
+STATS_DETAIL_HEIGHT = 136
 
 
 def _opponent(color: int) -> int:
@@ -53,7 +53,7 @@ def run_play_mode(config) -> int:
     game_id = uuid4().hex
     game_dir, log_path = _game_output_paths(config, game_id)
     log_writer = GameLogWriter(log_path)
-    status = f"Human turn ({config.engine})" if human_color == BLACK else f"AI thinking ({config.engine})"
+    status = "Human turn" if human_color == BLACK else "AI thinking"
     forbidden_worker = ForbiddenOverlayWorker()
     forbidden_worker.submit(session.state, config.rule)
 
@@ -86,7 +86,7 @@ def run_play_mode(config) -> int:
                 config.opening_book,
             )
             ai_started = True
-            status = f"AI thinking ({config.engine})"
+            status = "AI thinking"
 
         if ai_started and worker.done():
             result = worker.result()
@@ -148,7 +148,7 @@ def run_play_mode(config) -> int:
                     stats_scroll = 0
                     saved_frame_moves = 0
                     forbidden_worker.submit(session.state, config.rule)
-                    status = f"Human turn ({config.engine})" if human_color == BLACK else f"AI thinking ({config.engine})"
+                    status = "Human turn" if human_color == BLACK else "AI thinking"
                     continue
 
                 if session.winner is not None or session.current_color != human_color or ai_started:
@@ -250,7 +250,7 @@ def _run_selfplay_ui(config) -> int:
     game_id = uuid4().hex
     game_dir, log_path = _game_output_paths(config, game_id)
     log_writer = GameLogWriter(log_path)
-    status = f"Selfplay ready ({config.engine})"
+    status = "Selfplay ready"
     forbidden_worker = ForbiddenOverlayWorker()
     forbidden_worker.submit(session.state, config.rule)
     running = True
@@ -395,13 +395,17 @@ def _draw_runtime_line(screen, font, config, stats: list[dict], pygame) -> None:
     """在棋盘下方固定显示本局运行参数。"""
 
     latest_nps = _compact_number(stats[-1]["nps"]) if stats else "0"
-    line = (
-        f"engine {config.engine}   rule {config.rule}   "
-        f"depth {config.ai_depth}   time {config.time_limit:g}s   "
-        f"threads {config.threads}   speed {latest_nps} nodes/s"
+    lines = (
+        f"engine {config.engine}",
+        f"rule {config.rule}   depth {config.ai_depth}",
+        f"time {config.time_limit:g}s   threads {config.threads}   speed {latest_nps} n/s",
     )
-    text = font.render(line, True, (65, 65, 65))
-    screen.blit(text, (292, SCREEN_SIZE + 76))
+    box_rect = pygame.Rect(420, SCREEN_SIZE + 10, 520, 92)
+    pygame.draw.rect(screen, (225, 211, 183), box_rect, border_radius=4)
+    pygame.draw.rect(screen, (170, 154, 126), box_rect, 1, border_radius=4)
+    for i, line in enumerate(lines):
+        text = font.render(line, True, (65, 65, 65))
+        screen.blit(text, (box_rect.x + 16, SCREEN_SIZE + 18 + i * 30))
 
 
 def _game_output_paths(config, game_id: str) -> tuple[Path, Path]:
@@ -494,14 +498,14 @@ def _draw_stats_header(screen, font, x: int, y: int, pygame) -> None:
 
     labels = (
         ("#", 0),
-        ("side", 42),
-        ("src", 96),
-        ("pos", 154),
-        ("d", 212),
-        ("nodes", 252),
-        ("nps", 338),
-        ("time", 420),
-        ("score", 480),
+        ("side", 46),
+        ("src", 112),
+        ("pos", 184),
+        ("d", 258),
+        ("nodes", 318),
+        ("nps", 438),
+        ("time", 560),
+        ("score", 690),
     )
     for label, offset in labels:
         screen.blit(font.render(label, True, (132, 138, 146)), (x + offset, y))
@@ -519,14 +523,14 @@ def _draw_stats_row(screen, font, record: dict, x: int, y: int, width: int, heig
 
     values = (
         (f"#{record['move_number']}", 8, (236, 238, 241)),
-        (_short_player(record["player"]), 46, (236, 238, 241)),
-        ("book" if source == "book" else "ai", 98, accent),
-        (f"{record['row']},{record['col']}", 154, (236, 238, 241)),
-        (str(record["depth"]), 216, (236, 238, 241)),
-        (_compact_number(record["nodes"]), 252, (236, 238, 241)),
-        (_compact_number(record["nps"]), 338, (236, 238, 241)),
-        (_format_ms(record["time_ms"]), 420, (236, 238, 241)),
-        (_compact_score(score), 480, _score_text_color(score)),
+        (_short_player(record["player"]), 50, (236, 238, 241)),
+        ("book" if source == "book" else "ai", 114, accent),
+        (f"{record['row']},{record['col']}", 184, (236, 238, 241)),
+        (str(record["depth"]), 262, (236, 238, 241)),
+        (_compact_number(record["nodes"]), 318, (236, 238, 241)),
+        (_compact_number(record["nps"]), 438, (236, 238, 241)),
+        (_format_ms(record["time_ms"]), 560, (236, 238, 241)),
+        (_compact_score(score), 690, _score_text_color(score)),
     )
     for value, offset, color in values:
         screen.blit(font.render(value, True, color), (x + offset, y + 5))
@@ -545,7 +549,7 @@ def _draw_stats_detail(screen, font, record: dict, x: int, y: int, width: int, h
     header = f"#{record['move_number']} {record['player']}  ({record['row']}, {record['col']})"
     screen.blit(font.render(header, True, (244, 246, 248)), (x + 12, y + 8))
 
-    tag_rect = pygame.Rect(x + width - 72, y + 8, 58, 20)
+    tag_rect = pygame.Rect(x + width - 92, y + 8, 76, 26)
     pygame.draw.rect(screen, accent, tag_rect, border_radius=3)
     tag_text = "BOOK" if source == "book" else "AI"
     tag_surface = font.render(tag_text, True, (20, 24, 28))

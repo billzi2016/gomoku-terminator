@@ -9,3 +9,5 @@ __pycache__/
 htmlcov/
 data/game_logs/*.json
 data/game_logs/*/
+!data/game_logs/example/
+!data/game_logs/example/**

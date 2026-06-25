@@ -17,6 +17,9 @@ BIT_WORDS = 4
 BLACK = 1
 WHITE = 2
 WIN_SCORE = 1_000_000
+ROOT_MOVE_LIMIT = 40
+DEEP_MOVE_LIMIT = 18
+SHALLOW_MOVE_LIMIT = 12
 
 
 @dataclass(frozen=True)
@@ -234,7 +237,7 @@ if nb is not None:
         return False
 
     @nb.njit(cache=False)
-    def _generate_moves_bits(black: np.ndarray, white: np.ndarray, moves: np.ndarray) -> int:
+    def _generate_moves_bits(black: np.ndarray, white: np.ndarray, color: int, moves: np.ndarray) -> int:
         marker = np.zeros(POINT_COUNT, dtype=np.int8)
         occupied = 0
         count = 0
@@ -259,7 +262,144 @@ if nb is not None:
         if occupied == 0:
             moves[0] = 7 * BOARD_SIZE + 7
             return 1
+        _sort_moves_bits(black, white, color, moves, count)
         return count
+
+    @nb.njit(cache=False)
+    def _limit_for_depth(depth: int, is_root: bool) -> int:
+        """按层数收紧候选数。
+
+        越深的递归越容易发生组合爆炸，因此只保留战术评分最高的一小批点。
+        root 层保留更多选择，避免 UI 里明显漏招；内部层更激进，让 Alpha-Beta
+        可以快速把坏分支剪掉。
+        """
+
+        if is_root:
+            return ROOT_MOVE_LIMIT
+        if depth >= 4:
+            return DEEP_MOVE_LIMIT
+        return SHALLOW_MOVE_LIMIT
+
+    @nb.njit(cache=False)
+    def _sort_moves_bits(
+        black: np.ndarray,
+        white: np.ndarray,
+        color: int,
+        moves: np.ndarray,
+        count: int,
+    ) -> None:
+        """按战术价值原地排序候选点。
+
+        Numba 递归里避免 Python 对象和 list sort，这里用简单选择排序。候选已经
+        经过邻域过滤，数量通常不大；排序成本远小于错误顺序造成的搜索爆炸。
+        """
+
+        scores = np.empty(POINT_COUNT, dtype=np.int64)
+        for i in range(count):
+            scores[i] = _move_score_bits(black, white, int(moves[i]), color)
+
+        for i in range(count - 1):
+            best_i = i
+            best_score = scores[i]
+            for j in range(i + 1, count):
+                if scores[j] > best_score:
+                    best_score = scores[j]
+                    best_i = j
+            if best_i != i:
+                tmp_move = moves[i]
+                moves[i] = moves[best_i]
+                moves[best_i] = tmp_move
+                tmp_score = scores[i]
+                scores[i] = scores[best_i]
+                scores[best_i] = tmp_score
+
+    @nb.njit(cache=False)
+    def _move_score_bits(black: np.ndarray, white: np.ndarray, move: int, color: int) -> int:
+        """候选点战术打分。
+
+        评分只看一步后的局部线型：自己立刻成五最高，其次堵对方成五，再看活四、
+        冲四、活三等棋形。这个函数不追求完整评估，只负责让搜索先看强制手。
+        """
+
+        row = move // BOARD_SIZE
+        col = move - row * BOARD_SIZE
+        own = black if color == BLACK else white
+        opp = white if color == BLACK else black
+        opponent = WHITE if color == BLACK else BLACK
+
+        _place(black, white, move, color)
+        if _has_five_from(own, row, col):
+            _remove(black, white, move, color)
+            return WIN_SCORE * 10
+        own_score = _local_shape_score_bits(black, white, row, col, color)
+        _remove(black, white, move, color)
+
+        _place(black, white, move, opponent)
+        if _has_five_from(opp, row, col):
+            _remove(black, white, move, opponent)
+            return WIN_SCORE * 9
+        block_score = _local_shape_score_bits(black, white, row, col, opponent)
+        _remove(black, white, move, opponent)
+
+        center = BOARD_SIZE // 2
+        center_score = 30 - (abs(row - center) + abs(col - center))
+        return own_score + block_score // 2 + center_score
+
+    @nb.njit(cache=False)
+    def _local_shape_score_bits(black: np.ndarray, white: np.ndarray, row: int, col: int, color: int) -> int:
+        bits = black if color == BLACK else white
+        best = 0
+        dirs = ((0, 1), (1, 0), (1, 1), (1, -1))
+        for k in range(4):
+            dr = dirs[k][0]
+            dc = dirs[k][1]
+            length = 1
+            open_ends = 0
+
+            r = row + dr
+            c = col + dc
+            while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
+                if not _has_bit(bits, r * BOARD_SIZE + c):
+                    break
+                length += 1
+                r += dr
+                c += dc
+            if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and _is_empty(black, white, r * BOARD_SIZE + c):
+                open_ends += 1
+
+            r = row - dr
+            c = col - dc
+            while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
+                if not _has_bit(bits, r * BOARD_SIZE + c):
+                    break
+                length += 1
+                r -= dr
+                c -= dc
+            if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and _is_empty(black, white, r * BOARD_SIZE + c):
+                open_ends += 1
+
+            score = _shape_value_bits(length, open_ends)
+            if score > best:
+                best = score
+        return best
+
+    @nb.njit(cache=False)
+    def _shape_value_bits(length: int, open_ends: int) -> int:
+        if length >= 5:
+            return WIN_SCORE
+        if length == 4 and open_ends == 2:
+            return 300_000
+        if length == 4 and open_ends == 1:
+            return 90_000
+        if length == 3 and open_ends == 2:
+            return 35_000
+        if length == 3 and open_ends == 1:
+            return 6_000
+        if length == 2 and open_ends == 2:
+            return 1_200
+        if length == 2 and open_ends == 1:
+            return 180
+        return 0
 
     @nb.njit(cache=False)
     def _evaluate_bits(black: np.ndarray, white: np.ndarray, color: int) -> int:
@@ -297,9 +437,12 @@ if nb is not None:
             return _evaluate_bits(black, white, color), 1
 
         moves = np.empty(POINT_COUNT, dtype=np.int16)
-        count = _generate_moves_bits(black, white, moves)
+        count = _generate_moves_bits(black, white, color, moves)
         if count == 0:
             return _evaluate_bits(black, white, color), 1
+        limit = _limit_for_depth(depth, False)
+        if count > limit:
+            count = limit
 
         opponent = WHITE if color == BLACK else BLACK
         own = black if color == BLACK else white
@@ -334,7 +477,10 @@ if nb is not None:
         depth: int,
     ) -> tuple[int, int, int, int]:
         root_moves = np.empty(POINT_COUNT, dtype=np.int16)
-        root_count = _generate_moves_bits(black, white, root_moves)
+        root_count = _generate_moves_bits(black, white, color, root_moves)
+        root_limit = _limit_for_depth(depth, True)
+        if root_count > root_limit:
+            root_count = root_limit
         scores = np.empty(root_count, dtype=np.int64)
         nodes = np.empty(root_count, dtype=np.int64)
         opponent = WHITE if color == BLACK else BLACK
