@@ -3,9 +3,9 @@ from __future__ import annotations
 from gomoku_terminator.board.bitboard import BLACK, WHITE, BitboardState
 from gomoku_terminator.ui.forbidden_overlay import current_forbidden_points
 
-GRID_SIZE = 40
+GRID_SIZE = 60
 BOARD_SIZE = 15
-MARGIN = 40
+MARGIN = 60
 SCREEN_SIZE = GRID_SIZE * (BOARD_SIZE - 1) + MARGIN * 2
 
 COLOR_WOOD = (245, 210, 155)
@@ -14,6 +14,7 @@ COLOR_BLACK = (10, 10, 10)
 COLOR_WHITE = (245, 245, 245)
 COLOR_WHITE_EDGE = (200, 200, 200)
 COLOR_FORBIDDEN = (210, 32, 32)
+COLOR_LAST_MOVE = (35, 190, 95)
 
 
 def get_board_coords(mouse_pos: tuple[int, int]) -> tuple[int, int] | None:
@@ -35,6 +36,7 @@ def draw_board(
     state: BitboardState,
     rule: str = "renju",
     forbidden_cache: list[tuple[int, int]] | None = None,
+    last_move: tuple[int, int] | None = None,
 ) -> None:
     """绘制棋盘、棋子和黑棋禁手红色 X。
 
@@ -68,10 +70,10 @@ def draw_board(
         for col in range(BOARD_SIZE):
             color = state.color_at(row, col)
             if color == BLACK:
-                pygame.draw.circle(screen, COLOR_BLACK, _pixel(row, col), GRID_SIZE // 2 - 2)
+                pygame.draw.circle(screen, COLOR_BLACK, _pixel(row, col), GRID_SIZE // 2 - 3)
             elif color == WHITE:
-                pygame.draw.circle(screen, COLOR_WHITE, _pixel(row, col), GRID_SIZE // 2 - 2)
-                pygame.draw.circle(screen, COLOR_WHITE_EDGE, _pixel(row, col), GRID_SIZE // 2 - 2, 1)
+                pygame.draw.circle(screen, COLOR_WHITE, _pixel(row, col), GRID_SIZE // 2 - 3)
+                pygame.draw.circle(screen, COLOR_WHITE_EDGE, _pixel(row, col), GRID_SIZE // 2 - 3, 1)
 
     forbidden_points = current_forbidden_points(state, rule) if forbidden_cache is None else forbidden_cache
     for row, col in forbidden_points:
@@ -79,6 +81,9 @@ def draw_board(
         delta = GRID_SIZE // 4
         pygame.draw.line(screen, COLOR_FORBIDDEN, (x - delta, y - delta), (x + delta, y + delta), 3)
         pygame.draw.line(screen, COLOR_FORBIDDEN, (x + delta, y - delta), (x - delta, y + delta), 3)
+
+    if last_move is not None:
+        pygame.draw.circle(screen, COLOR_LAST_MOVE, _pixel(last_move[0], last_move[1]), GRID_SIZE // 2 + 7, 4)
 
 
 def _pixel(row: int, col: int) -> tuple[int, int]:

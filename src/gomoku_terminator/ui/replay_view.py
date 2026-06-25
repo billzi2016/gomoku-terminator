@@ -5,9 +5,9 @@ from gomoku_terminator.game_session import GameSession
 from gomoku_terminator.logging.replay_loader import load_replay
 from gomoku_terminator.ui.board_view import SCREEN_SIZE, draw_board
 
-PANEL_HEIGHT = 96
-BUTTON_WIDTH = 96
-BUTTON_HEIGHT = 34
+PANEL_HEIGHT = 120
+BUTTON_WIDTH = 116
+BUTTON_HEIGHT = 42
 
 
 def run_replay_mode(config) -> int:
@@ -26,18 +26,18 @@ def run_replay_mode(config) -> int:
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE + PANEL_HEIGHT))
     pygame.display.set_caption("Gomoku Terminator Replay")
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont(None, 24)
+    font = pygame.font.SysFont(None, 30)
 
     step = 0
-    prev_button = pygame.Rect(16, SCREEN_SIZE + 50, BUTTON_WIDTH, BUTTON_HEIGHT)
-    next_button = pygame.Rect(120, SCREEN_SIZE + 50, BUTTON_WIDTH, BUTTON_HEIGHT)
-    slider_rect = pygame.Rect(16, SCREEN_SIZE + 18, SCREEN_SIZE - 32, 14)
+    prev_button = pygame.Rect(22, SCREEN_SIZE + 62, BUTTON_WIDTH, BUTTON_HEIGHT)
+    next_button = pygame.Rect(150, SCREEN_SIZE + 62, BUTTON_WIDTH, BUTTON_HEIGHT)
+    slider_rect = pygame.Rect(22, SCREEN_SIZE + 24, SCREEN_SIZE - 44, 16)
     dragging = False
     running = True
 
     while running:
         session = _session_at(records, step, config.rule)
-        draw_board(screen, session.state, config.rule)
+        draw_board(screen, session.state, config.rule, last_move=_last_move_point(session))
         _draw_replay_panel(screen, font, step, len(records), prev_button, next_button, slider_rect, pygame)
 
         for event in pygame.event.get():
@@ -76,6 +76,15 @@ def _session_at(records: list[dict], step: int, rule: str) -> GameSession:
     return session
 
 
+def _last_move_point(session: GameSession) -> tuple[int, int] | None:
+    """返回复盘当前步的最后一手坐标。"""
+
+    if not session.moves:
+        return None
+    move = session.moves[-1]
+    return move.row, move.col
+
+
 def _draw_replay_panel(screen, font, step: int, total: int, prev_button, next_button, slider_rect, pygame) -> None:
     """绘制复盘底部面板。
 
@@ -90,7 +99,7 @@ def _draw_replay_panel(screen, font, step: int, total: int, prev_button, next_bu
     _draw_button(screen, font, prev_button, "Prev", pygame)
     _draw_button(screen, font, next_button, "Next", pygame)
     label = font.render(f"{step}/{total}", True, (30, 30, 30))
-    screen.blit(label, (232, SCREEN_SIZE + 58))
+    screen.blit(label, (292, SCREEN_SIZE + 72))
 
 
 def _draw_button(screen, font, rect, label: str, pygame) -> None:

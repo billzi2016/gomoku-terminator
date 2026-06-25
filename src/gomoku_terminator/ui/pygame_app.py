@@ -14,12 +14,12 @@ from gomoku_terminator.ui.ai_worker import AIWorker
 from gomoku_terminator.ui.ai_worker import _search_with_engine
 from gomoku_terminator.ui.board_view import SCREEN_SIZE, draw_board, get_board_coords
 
-PANEL_HEIGHT = 88
-STATS_WIDTH = 320
-BUTTON_HEIGHT = 34
-BUTTON_WIDTH = 96
-STATS_ROW_HEIGHT = 30
-STATS_DETAIL_HEIGHT = 126
+PANEL_HEIGHT = 112
+STATS_WIDTH = 560
+BUTTON_HEIGHT = 42
+BUTTON_WIDTH = 116
+STATS_ROW_HEIGHT = 34
+STATS_DETAIL_HEIGHT = 172
 
 
 def _opponent(color: int) -> int:
@@ -44,31 +44,33 @@ def run_play_mode(config) -> int:
     screen = pygame.display.set_mode((SCREEN_SIZE + STATS_WIDTH, SCREEN_SIZE + PANEL_HEIGHT))
     pygame.display.set_caption("Gomoku Terminator")
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont(None, 24)
+    font = pygame.font.SysFont(None, 30)
 
     human_color = BLACK if config.human == "black" else WHITE
     ai_color = _opponent(human_color)
     session = GameSession(config.rule)
     worker = AIWorker()
     game_id = uuid4().hex
-    log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
+    game_dir, log_path = _game_output_paths(config, game_id)
     log_writer = GameLogWriter(log_path)
     status = f"Human turn ({config.engine})" if human_color == BLACK else f"AI thinking ({config.engine})"
     forbidden_worker = ForbiddenOverlayWorker()
     forbidden_worker.submit(session.state, config.rule)
 
-    undo_button = pygame.Rect(16, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
-    restart_button = pygame.Rect(120, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
+    undo_button = pygame.Rect(22, SCREEN_SIZE + 30, BUTTON_WIDTH, BUTTON_HEIGHT)
+    restart_button = pygame.Rect(150, SCREEN_SIZE + 30, BUTTON_WIDTH, BUTTON_HEIGHT)
     running = True
     ai_started = False
     stats: list[dict] = []
     stats_scroll = 0
+    saved_frame_moves = 0
 
     while running:
         forbidden_cache = forbidden_worker.poll()
-        draw_board(screen, session.state, config.rule, forbidden_cache)
-        _draw_panel(screen, font, status, undo_button, restart_button, pygame)
-        _draw_stats_panel(screen, font, stats, stats_scroll, pygame)
+        draw_board(screen, session.state, config.rule, forbidden_cache, _last_move_point(session))
+        _draw_panel(screen, font, status, undo_button, restart_button, config, stats, pygame)
+        _draw_stats_panel(screen, font, stats, stats_scroll, config, pygame)
+        saved_frame_moves = _save_move_frame_if_needed(screen, game_dir, len(session.moves), saved_frame_moves, pygame)
 
         if session.winner is None and session.current_color == ai_color and not ai_started:
             ai_started_at = time.perf_counter()
@@ -139,11 +141,12 @@ def run_play_mode(config) -> int:
                 if restart_button.collidepoint(event.pos):
                     session.reset()
                     game_id = uuid4().hex
-                    log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
+                    game_dir, log_path = _game_output_paths(config, game_id)
                     log_writer = GameLogWriter(log_path)
                     ai_started = False
                     stats = []
                     stats_scroll = 0
+                    saved_frame_moves = 0
                     forbidden_worker.submit(session.state, config.rule)
                     status = f"Human turn ({config.engine})" if human_color == BLACK else f"AI thinking ({config.engine})"
                     continue
@@ -187,7 +190,7 @@ def run_selfplay_mode(config) -> int:
     for game_number in range(config.games):
         session = GameSession(config.rule)
         game_id = uuid4().hex
-        log_path = Path(config.log_dir) / f"{game_id}.json"
+        _, log_path = _game_output_paths(config, game_id)
         writer = GameLogWriter(log_path)
         while session.winner is None and len(session.moves) < config.max_moves:
             color = session.current_color
@@ -240,12 +243,12 @@ def _run_selfplay_ui(config) -> int:
     screen = pygame.display.set_mode((SCREEN_SIZE + STATS_WIDTH, SCREEN_SIZE + PANEL_HEIGHT))
     pygame.display.set_caption("Gomoku Terminator Selfplay")
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont(None, 24)
+    font = pygame.font.SysFont(None, 30)
 
     session = GameSession(config.rule)
     worker = AIWorker()
     game_id = uuid4().hex
-    log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
+    game_dir, log_path = _game_output_paths(config, game_id)
     log_writer = GameLogWriter(log_path)
     status = f"Selfplay ready ({config.engine})"
     forbidden_worker = ForbiddenOverlayWorker()
@@ -253,17 +256,19 @@ def _run_selfplay_ui(config) -> int:
     running = True
     ai_started = False
     ai_started_at = 0.0
-    restart_button = pygame.Rect(16, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
-    pause_button = pygame.Rect(120, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
+    restart_button = pygame.Rect(22, SCREEN_SIZE + 30, BUTTON_WIDTH, BUTTON_HEIGHT)
+    pause_button = pygame.Rect(150, SCREEN_SIZE + 30, BUTTON_WIDTH, BUTTON_HEIGHT)
     paused = False
     stats: list[dict] = []
     stats_scroll = 0
+    saved_frame_moves = 0
 
     while running:
         forbidden_cache = forbidden_worker.poll()
-        draw_board(screen, session.state, config.rule, forbidden_cache)
-        _draw_panel(screen, font, status, restart_button, pause_button, pygame)
-        _draw_stats_panel(screen, font, stats, stats_scroll, pygame)
+        draw_board(screen, session.state, config.rule, forbidden_cache, _last_move_point(session))
+        _draw_panel(screen, font, status, restart_button, pause_button, config, stats, pygame)
+        _draw_stats_panel(screen, font, stats, stats_scroll, config, pygame)
+        saved_frame_moves = _save_move_frame_if_needed(screen, game_dir, len(session.moves), saved_frame_moves, pygame)
 
         if not paused and session.winner is None and len(session.moves) < config.max_moves and not ai_started:
             color = session.current_color
@@ -331,12 +336,13 @@ def _run_selfplay_ui(config) -> int:
                 if restart_button.collidepoint(event.pos):
                     session.reset()
                     game_id = uuid4().hex
-                    log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
+                    game_dir, log_path = _game_output_paths(config, game_id)
                     log_writer = GameLogWriter(log_path)
                     ai_started = False
                     paused = False
                     stats = []
                     stats_scroll = 0
+                    saved_frame_moves = 0
                     forbidden_worker.submit(session.state, config.rule)
                     status = "Selfplay restarted"
                 elif pause_button.collidepoint(event.pos):
@@ -355,7 +361,7 @@ def _run_selfplay_ui(config) -> int:
     return 0
 
 
-def _draw_panel(screen, font, status: str, undo_button, restart_button, pygame) -> None:
+def _draw_panel(screen, font, status: str, undo_button, restart_button, config, stats: list[dict], pygame) -> None:
     """绘制人机模式底部控制面板。"""
 
     panel_rect = pygame.Rect(0, SCREEN_SIZE, SCREEN_SIZE, PANEL_HEIGHT)
@@ -363,7 +369,8 @@ def _draw_panel(screen, font, status: str, undo_button, restart_button, pygame) 
     _draw_button(screen, font, undo_button, "Undo", pygame)
     _draw_button(screen, font, restart_button, "Restart", pygame)
     text = font.render(status, True, (30, 30, 30))
-    screen.blit(text, (232, SCREEN_SIZE + 30))
+    screen.blit(text, (292, SCREEN_SIZE + 42))
+    _draw_runtime_line(screen, font, config, stats, pygame)
 
 
 def _draw_button(screen, font, rect, label: str, pygame) -> None:
@@ -373,6 +380,56 @@ def _draw_button(screen, font, rect, label: str, pygame) -> None:
     pygame.draw.rect(screen, (60, 60, 60), rect, 1, border_radius=4)
     text = font.render(label, True, (20, 20, 20))
     screen.blit(text, text.get_rect(center=rect.center))
+
+
+def _last_move_point(session: GameSession) -> tuple[int, int] | None:
+    """返回最近一手坐标，用于棋盘绿色空心圈标记。"""
+
+    if not session.moves:
+        return None
+    move = session.moves[-1]
+    return move.row, move.col
+
+
+def _draw_runtime_line(screen, font, config, stats: list[dict], pygame) -> None:
+    """在棋盘下方固定显示本局运行参数。"""
+
+    latest_nps = _compact_number(stats[-1]["nps"]) if stats else "0"
+    line = (
+        f"engine {config.engine}   rule {config.rule}   "
+        f"depth {config.ai_depth}   time {config.time_limit:g}s   "
+        f"threads {config.threads}   speed {latest_nps} nodes/s"
+    )
+    text = font.render(line, True, (65, 65, 65))
+    screen.blit(text, (292, SCREEN_SIZE + 76))
+
+
+def _game_output_paths(config, game_id: str) -> tuple[Path, Path]:
+    """返回本局输出目录和 JSON 日志路径。
+
+    默认结构是 `data/game_logs/<game_id>/game.json`，UI 截图也保存在同一目录。
+    如果用户传入 `--log-file something.json`，则使用 `something/` 作为目录名。
+    """
+
+    if config.log_file:
+        requested = Path(config.log_file)
+        game_dir = requested.with_suffix("") if requested.suffix else requested
+    else:
+        game_dir = Path(config.log_dir) / game_id
+    return game_dir, game_dir / "game.json"
+
+
+def _save_move_frame_if_needed(screen, game_dir: Path, move_count: int, saved_count: int, pygame) -> int:
+    """每手棋保存一张整窗截图。
+
+    文件名固定为 `001.jpg`、`002.jpg`，便于按时间顺序复盘局势。
+    """
+
+    if move_count <= 0 or move_count == saved_count:
+        return saved_count
+    game_dir.mkdir(parents=True, exist_ok=True)
+    pygame.image.save(screen, str(game_dir / f"{move_count:03d}.jpg"))
+    return move_count
 
 
 def _stats_record(
@@ -404,38 +461,48 @@ def _stats_record(
     }
 
 
-def _draw_stats_panel(screen, font, stats: list[dict], scroll: int, pygame) -> None:
+def _draw_stats_panel(screen, font, stats: list[dict], scroll: int, config, pygame) -> None:
     """绘制右侧 AI 思考统计面板。"""
 
     x = SCREEN_SIZE
     height = SCREEN_SIZE + PANEL_HEIGHT
     pygame.draw.rect(screen, (31, 34, 38), pygame.Rect(x, 0, STATS_WIDTH, height))
     pygame.draw.line(screen, (82, 82, 82), (x, 0), (x, height), 1)
-    screen.blit(font.render("AI Stats", True, (245, 245, 245)), (x + 14, 12))
+    screen.blit(font.render("AI Stats", True, (245, 245, 245)), (x + 18, 16))
     summary = f"{len(stats)} AI moves  |  wheel scroll"
-    screen.blit(font.render(summary, True, (166, 170, 176)), (x + 14, 40))
-    pygame.draw.line(screen, (65, 70, 78), (x + 12, 66), (x + STATS_WIDTH - 12, 66), 1)
+    screen.blit(font.render(summary, True, (166, 170, 176)), (x + 18, 48))
+    pygame.draw.line(screen, (65, 70, 78), (x + 16, 78), (x + STATS_WIDTH - 16, 78), 1)
 
-    _draw_stats_header(screen, font, x + 10, 74, pygame)
+    _draw_stats_header(screen, font, x + 14, 88, pygame)
     visible_count = _visible_stats_count()
     end = max(0, len(stats) - scroll)
     start = max(0, end - visible_count)
-    y = 98
+    y = 114
     for record in stats[start:end]:
-        _draw_stats_row(screen, font, record, x + 10, y, STATS_WIDTH - 20, STATS_ROW_HEIGHT - 2, pygame)
+        _draw_stats_row(screen, font, record, x + 14, y, STATS_WIDTH - 28, STATS_ROW_HEIGHT - 2, pygame)
         y += STATS_ROW_HEIGHT
 
     detail_y = height - STATS_DETAIL_HEIGHT - 12
-    pygame.draw.line(screen, (65, 70, 78), (x + 12, detail_y - 10), (x + STATS_WIDTH - 12, detail_y - 10), 1)
+    pygame.draw.line(screen, (65, 70, 78), (x + 16, detail_y - 10), (x + STATS_WIDTH - 16, detail_y - 10), 1)
     if stats:
         selected = stats[max(0, min(len(stats) - 1, len(stats) - 1 - scroll))]
-        _draw_stats_detail(screen, font, selected, x + 10, detail_y, STATS_WIDTH - 20, STATS_DETAIL_HEIGHT, pygame)
+        _draw_stats_detail(screen, font, selected, x + 14, detail_y, STATS_WIDTH - 28, STATS_DETAIL_HEIGHT, pygame)
 
 
 def _draw_stats_header(screen, font, x: int, y: int, pygame) -> None:
     """绘制统计表头。"""
 
-    labels = (("#", 0), ("side", 36), ("src", 82), ("pos", 124), ("d", 176), ("nodes", 204), ("score", 254))
+    labels = (
+        ("#", 0),
+        ("side", 42),
+        ("src", 96),
+        ("pos", 154),
+        ("d", 212),
+        ("nodes", 252),
+        ("nps", 338),
+        ("time", 420),
+        ("score", 480),
+    )
     for label, offset in labels:
         screen.blit(font.render(label, True, (132, 138, 146)), (x + offset, y))
 
@@ -452,12 +519,14 @@ def _draw_stats_row(screen, font, record: dict, x: int, y: int, width: int, heig
 
     values = (
         (f"#{record['move_number']}", 8, (236, 238, 241)),
-        (_short_player(record["player"]), 40, (236, 238, 241)),
-        ("book" if source == "book" else "ai", 84, accent),
-        (f"{record['row']},{record['col']}", 124, (236, 238, 241)),
-        (str(record["depth"]), 180, (236, 238, 241)),
-        (_compact_number(record["nodes"]), 204, (236, 238, 241)),
-        (_compact_score(score), 254, _score_text_color(score)),
+        (_short_player(record["player"]), 46, (236, 238, 241)),
+        ("book" if source == "book" else "ai", 98, accent),
+        (f"{record['row']},{record['col']}", 154, (236, 238, 241)),
+        (str(record["depth"]), 216, (236, 238, 241)),
+        (_compact_number(record["nodes"]), 252, (236, 238, 241)),
+        (_compact_number(record["nps"]), 338, (236, 238, 241)),
+        (_format_ms(record["time_ms"]), 420, (236, 238, 241)),
+        (_compact_score(score), 480, _score_text_color(score)),
     )
     for value, offset, color in values:
         screen.blit(font.render(value, True, color), (x + offset, y + 5))
@@ -494,6 +563,8 @@ def _draw_stats_detail(screen, font, record: dict, x: int, y: int, width: int, h
     score_text = f"score {_compact_score(score)}"
     score_color = _score_text_color(score)
     screen.blit(font.render(score_text, True, score_color), (left, y + 76))
+    speed_text = f"speed {_compact_number(record['nps'])} nodes/s"
+    screen.blit(font.render(speed_text, True, (190, 220, 255)), (left, y + 102))
 
 
 def _draw_metric(screen, font, label: str, value: str, x: int, y: int) -> None:
@@ -514,7 +585,7 @@ def _scroll_stats(current: int, wheel_y: int, total: int) -> int:
 def _visible_stats_count() -> int:
     """返回右侧统计面板当前能完整显示的表格行数。"""
 
-    table_height = SCREEN_SIZE + PANEL_HEIGHT - STATS_DETAIL_HEIGHT - 124
+    table_height = SCREEN_SIZE + PANEL_HEIGHT - STATS_DETAIL_HEIGHT - 150
     return max(1, table_height // STATS_ROW_HEIGHT)
 
 
