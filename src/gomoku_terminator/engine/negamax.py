@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from gomoku_terminator.board.bitboard import BLACK, WHITE, BitboardState
 from gomoku_terminator.engine.evaluator import evaluate
 from gomoku_terminator.engine.move_ordering import ordered_moves
+from gomoku_terminator.engine.tactics import immediate_block_move, immediate_win_move
 from gomoku_terminator.engine.time_control import TimeControl
 
 
@@ -35,6 +36,12 @@ def search_best_move(
     """
     nodes = 0
     best_score = -10**9
+    win_move = immediate_win_move(state, color, rule)
+    if win_move is not None:
+        return SearchResult(win_move[0], win_move[1], 10**9, depth, 1)
+    block_move = immediate_block_move(state, color, rule)
+    if block_move is not None:
+        return SearchResult(block_move[0], block_move[1], 500_000, depth, 1)
     candidates = ordered_moves(state, color, rule)
     if not candidates:
         return SearchResult(-1, -1, -10**9, depth, 0)
