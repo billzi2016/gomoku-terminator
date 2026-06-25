@@ -4,6 +4,7 @@ import time
 
 from gomoku_terminator.board.bitboard import BLACK, BitboardState
 from gomoku_terminator.engine.negamax import search_best_move
+from gomoku_terminator.engine.numba_search import numba_available, search_empty_benchmark
 
 
 def run_benchmark(config) -> int:
@@ -11,11 +12,35 @@ def run_benchmark(config) -> int:
 
     后续会输出深度、节点数、NPS、剪枝率、置换表命中率和最佳落子。
     """
+    if config.backend == "numba":
+        if not numba_available():
+            print("Numba is not installed")
+            return 1
+        # 第一次调用会触发 JIT 编译，不能代表真实搜索速度。先 warmup 一次，
+        # 正式计时只覆盖热启动后的搜索。
+        search_empty_benchmark(depth=1, threads=config.threads)
+        started = time.perf_counter()
+        result = search_empty_benchmark(depth=5, threads=config.threads)
+        elapsed = max(0.000001, time.perf_counter() - started)
+        nps = result.nodes / elapsed
+        print("backend=numba")
+        print(f"rule={config.rule}")
+        print(f"time_limit={config.time_limit:.3f}s")
+        print(f"threads={result.threads}")
+        print(f"best_move=({result.row}, {result.col})")
+        print(f"score={result.score}")
+        print(f"depth={result.depth}")
+        print(f"nodes={result.nodes}")
+        print(f"elapsed_ms={elapsed * 1000:.2f}")
+        print(f"nps={nps:.0f}")
+        return 0
+
     state = BitboardState()
     started = time.perf_counter()
     result = search_best_move(state, BLACK, depth=2, time_limit=config.time_limit, rule=config.rule)
     elapsed = max(0.000001, time.perf_counter() - started)
     nps = result.nodes / elapsed
+    print("backend=python")
     print(f"rule={config.rule}")
     print(f"time_limit={config.time_limit:.3f}s")
     print(f"threads={config.threads}")

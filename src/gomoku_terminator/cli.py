@@ -23,6 +23,7 @@ class RuntimeConfig:
     games: int = 1
     max_moves: int = 225
     position: str | None = None
+    backend: str = "python"
     replay_file: str | None = None
 
 
@@ -58,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     benchmark = subparsers.add_parser("benchmark", help="run engine benchmark")
     benchmark.add_argument("--position")
+    benchmark.add_argument("--backend", choices=("python", "numba"), default="python")
 
     return parser
 
@@ -78,6 +80,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         games=getattr(args, "games", 1),
         max_moves=getattr(args, "max_moves", 225),
         position=getattr(args, "position", None),
+        backend=getattr(args, "backend", "python"),
         replay_file=getattr(args, "replay_file", None),
     )
 
