@@ -9,5 +9,9 @@ __pycache__/
 htmlcov/
 data/game_logs/*.json
 data/game_logs/*/
-!data/game_logs/example/
-!data/game_logs/example/**
+!data/game_logs/example-ai-ai-free/
+!data/game_logs/example-ai-ai-free/**
+!data/game_logs/example-ai-ai-renju/
+!data/game_logs/example-ai-ai-renju/**
+!data/game_logs/example-human-ai-free/
+!data/game_logs/example-human-ai-free/**

@@ -54,7 +54,7 @@ def test_stats_formatters_are_compact():
 
 
 def test_stats_panel_is_wide_enough_for_table():
-    assert STATS_WIDTH >= 780
+    assert STATS_WIDTH >= 860
 
 
 def test_board_view_is_scaled_up_for_readability():

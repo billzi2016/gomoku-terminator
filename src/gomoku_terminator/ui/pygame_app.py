@@ -15,7 +15,7 @@ from gomoku_terminator.ui.ai_worker import _search_with_engine
 from gomoku_terminator.ui.board_view import SCREEN_SIZE, draw_board, get_board_coords
 
 PANEL_HEIGHT = 112
-STATS_WIDTH = 780
+STATS_WIDTH = 860
 BUTTON_HEIGHT = 42
 BUTTON_WIDTH = 116
 STATS_ROW_HEIGHT = 34
@@ -132,8 +132,8 @@ def run_play_mode(config) -> int:
                 if undo_button.collidepoint(event.pos):
                     if ai_started:
                         ai_started = False
-                    session.undo_one_human_turn()
-                    if stats:
+                    removed = session.undo_last_move()
+                    if removed is not None and stats and stats[-1]["move_number"] > len(session.moves):
                         stats.pop()
                     forbidden_worker.submit(session.state, config.rule)
                     status = "Undo"
@@ -400,12 +400,16 @@ def _draw_runtime_line(screen, font, config, stats: list[dict], pygame) -> None:
         f"rule {config.rule}   depth {config.ai_depth}",
         f"time {config.time_limit:g}s   threads {config.threads}   speed {latest_nps} n/s",
     )
-    box_rect = pygame.Rect(420, SCREEN_SIZE + 10, 520, 92)
+    # 参数框按内容收缩并靠棋盘右侧放置。之前固定 520px 宽会在机机模式
+    # 留出大块空白，还会挤压左侧状态文本；动态宽度可以同时解决两件事。
+    text_width = max(font.size(line)[0] for line in lines)
+    box_width = min(520, text_width + 32)
+    box_rect = pygame.Rect(SCREEN_SIZE - box_width - 22, SCREEN_SIZE + 10, box_width, 92)
     pygame.draw.rect(screen, (225, 211, 183), box_rect, border_radius=4)
     pygame.draw.rect(screen, (170, 154, 126), box_rect, 1, border_radius=4)
     for i, line in enumerate(lines):
         text = font.render(line, True, (65, 65, 65))
-        screen.blit(text, (box_rect.x + 16, SCREEN_SIZE + 18 + i * 30))
+        screen.blit(text, (box_rect.x + 16, box_rect.y + 8 + i * 30))
 
 
 def _game_output_paths(config, game_id: str) -> tuple[Path, Path]:
@@ -505,7 +509,7 @@ def _draw_stats_header(screen, font, x: int, y: int, pygame) -> None:
         ("nodes", 318),
         ("nps", 438),
         ("time", 560),
-        ("score", 690),
+        ("score", 700),
     )
     for label, offset in labels:
         screen.blit(font.render(label, True, (132, 138, 146)), (x + offset, y))
@@ -530,7 +534,7 @@ def _draw_stats_row(screen, font, record: dict, x: int, y: int, width: int, heig
         (_compact_number(record["nodes"]), 318, (236, 238, 241)),
         (_compact_number(record["nps"]), 438, (236, 238, 241)),
         (_format_ms(record["time_ms"]), 560, (236, 238, 241)),
-        (_compact_score(score), 690, _score_text_color(score)),
+        (_compact_score(score), 700, _score_text_color(score)),
     )
     for value, offset, color in values:
         screen.blit(font.render(value, True, color), (x + offset, y + 5))

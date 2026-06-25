@@ -24,6 +24,28 @@ def test_undo_one_human_turn_removes_two_moves():
     assert session.state.is_empty_at(7, 8)
 
 
+def test_undo_last_move_can_be_used_repeatedly():
+    session = GameSession()
+    session.place(7, 7, BLACK)
+    session.place(7, 8, WHITE)
+    session.place(8, 8, BLACK)
+
+    removed = session.undo_last_move()
+
+    assert removed is not None
+    assert removed.color == BLACK
+    assert len(session.moves) == 2
+    assert session.state.is_empty_at(8, 8)
+
+    session.undo_last_move()
+    session.undo_last_move()
+    session.undo_last_move()
+
+    assert len(session.moves) == 0
+    assert session.state.is_empty_at(7, 7)
+    assert session.state.is_empty_at(7, 8)
+
+
 def test_session_blocks_black_forbidden_move():
     session = GameSession(rule="renju")
     for col in range(5):

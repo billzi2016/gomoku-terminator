@@ -16,38 +16,103 @@ CPU-only 五子棋 / 连珠 AI 项目。
 
 棋力说明：UI/selfplay 默认 `--ai-depth 4`；`--time-limit` 和 `--ai-depth` 没有 CLI 硬上限，只做最小值保护。最终测试建议用 `--ai-depth 10 --time-limit 10 --threads 24`。`numba_bitboard` 在进入深搜前会先做即时胜、即时防守和双威胁检查，并在 bitboard 递归内做邻域候选、战术排序和分层 Top-K 截断。当前大致进入中级水准，但还不是职业强度，后续仍要做迭代加深、VCF/VCT 和更完整的 Renju 高速禁手过滤。
 
-## Example Game
+## Example Games
 
-下面是 `data/game_logs/example` 中保存的一局完整 UI 截图序列。每一步都是整窗截图，包含棋盘、最后一手绿色标记、右侧 AI 统计和底部参数信息。
+下面是 `data/game_logs` 中保留的三组示例 UI 截图。每一步都是整窗截图，包含棋盘、最后一手绿色标记、右侧 AI 统计和底部参数信息。
 
-![Move 001](data/game_logs/example/001.jpg)
-![Move 002](data/game_logs/example/002.jpg)
-![Move 003](data/game_logs/example/003.jpg)
-![Move 004](data/game_logs/example/004.jpg)
-![Move 005](data/game_logs/example/005.jpg)
-![Move 006](data/game_logs/example/006.jpg)
-![Move 007](data/game_logs/example/007.jpg)
-![Move 008](data/game_logs/example/008.jpg)
-![Move 009](data/game_logs/example/009.jpg)
-![Move 010](data/game_logs/example/010.jpg)
-![Move 011](data/game_logs/example/011.jpg)
-![Move 012](data/game_logs/example/012.jpg)
-![Move 013](data/game_logs/example/013.jpg)
-![Move 014](data/game_logs/example/014.jpg)
-![Move 015](data/game_logs/example/015.jpg)
-![Move 016](data/game_logs/example/016.jpg)
-![Move 017](data/game_logs/example/017.jpg)
-![Move 018](data/game_logs/example/018.jpg)
-![Move 019](data/game_logs/example/019.jpg)
-![Move 020](data/game_logs/example/020.jpg)
-![Move 021](data/game_logs/example/021.jpg)
-![Move 022](data/game_logs/example/022.jpg)
-![Move 023](data/game_logs/example/023.jpg)
-![Move 024](data/game_logs/example/024.jpg)
-![Move 025](data/game_logs/example/025.jpg)
-![Move 026](data/game_logs/example/026.jpg)
-![Move 027](data/game_logs/example/027.jpg)
-![Move 028](data/game_logs/example/028.jpg)
+### AI vs AI Freestyle
+
+来源目录：`data/game_logs/example-ai-ai-free`
+
+![AI vs AI Freestyle 001](data/game_logs/example-ai-ai-free/001.jpg)
+![AI vs AI Freestyle 002](data/game_logs/example-ai-ai-free/002.jpg)
+![AI vs AI Freestyle 003](data/game_logs/example-ai-ai-free/003.jpg)
+![AI vs AI Freestyle 004](data/game_logs/example-ai-ai-free/004.jpg)
+![AI vs AI Freestyle 005](data/game_logs/example-ai-ai-free/005.jpg)
+![AI vs AI Freestyle 006](data/game_logs/example-ai-ai-free/006.jpg)
+![AI vs AI Freestyle 007](data/game_logs/example-ai-ai-free/007.jpg)
+![AI vs AI Freestyle 008](data/game_logs/example-ai-ai-free/008.jpg)
+![AI vs AI Freestyle 009](data/game_logs/example-ai-ai-free/009.jpg)
+![AI vs AI Freestyle 010](data/game_logs/example-ai-ai-free/010.jpg)
+![AI vs AI Freestyle 011](data/game_logs/example-ai-ai-free/011.jpg)
+![AI vs AI Freestyle 012](data/game_logs/example-ai-ai-free/012.jpg)
+![AI vs AI Freestyle 013](data/game_logs/example-ai-ai-free/013.jpg)
+![AI vs AI Freestyle 014](data/game_logs/example-ai-ai-free/014.jpg)
+![AI vs AI Freestyle 015](data/game_logs/example-ai-ai-free/015.jpg)
+![AI vs AI Freestyle 016](data/game_logs/example-ai-ai-free/016.jpg)
+![AI vs AI Freestyle 017](data/game_logs/example-ai-ai-free/017.jpg)
+![AI vs AI Freestyle 018](data/game_logs/example-ai-ai-free/018.jpg)
+![AI vs AI Freestyle 019](data/game_logs/example-ai-ai-free/019.jpg)
+![AI vs AI Freestyle 020](data/game_logs/example-ai-ai-free/020.jpg)
+![AI vs AI Freestyle 021](data/game_logs/example-ai-ai-free/021.jpg)
+![AI vs AI Freestyle 022](data/game_logs/example-ai-ai-free/022.jpg)
+![AI vs AI Freestyle 023](data/game_logs/example-ai-ai-free/023.jpg)
+![AI vs AI Freestyle 024](data/game_logs/example-ai-ai-free/024.jpg)
+![AI vs AI Freestyle 025](data/game_logs/example-ai-ai-free/025.jpg)
+![AI vs AI Freestyle 026](data/game_logs/example-ai-ai-free/026.jpg)
+![AI vs AI Freestyle 027](data/game_logs/example-ai-ai-free/027.jpg)
+![AI vs AI Freestyle 028](data/game_logs/example-ai-ai-free/028.jpg)
+![AI vs AI Freestyle 029](data/game_logs/example-ai-ai-free/029.jpg)
+
+### AI vs AI Renju
+
+来源目录：`data/game_logs/example-ai-ai-renju`
+
+![AI vs AI Renju 001](data/game_logs/example-ai-ai-renju/001.jpg)
+![AI vs AI Renju 002](data/game_logs/example-ai-ai-renju/002.jpg)
+![AI vs AI Renju 003](data/game_logs/example-ai-ai-renju/003.jpg)
+![AI vs AI Renju 004](data/game_logs/example-ai-ai-renju/004.jpg)
+![AI vs AI Renju 005](data/game_logs/example-ai-ai-renju/005.jpg)
+![AI vs AI Renju 006](data/game_logs/example-ai-ai-renju/006.jpg)
+![AI vs AI Renju 007](data/game_logs/example-ai-ai-renju/007.jpg)
+![AI vs AI Renju 008](data/game_logs/example-ai-ai-renju/008.jpg)
+![AI vs AI Renju 009](data/game_logs/example-ai-ai-renju/009.jpg)
+![AI vs AI Renju 010](data/game_logs/example-ai-ai-renju/010.jpg)
+![AI vs AI Renju 011](data/game_logs/example-ai-ai-renju/011.jpg)
+![AI vs AI Renju 012](data/game_logs/example-ai-ai-renju/012.jpg)
+![AI vs AI Renju 013](data/game_logs/example-ai-ai-renju/013.jpg)
+![AI vs AI Renju 014](data/game_logs/example-ai-ai-renju/014.jpg)
+
+### Human vs AI Freestyle
+
+来源目录：`data/game_logs/example-human-ai-free`
+
+![Human vs AI Freestyle 001](data/game_logs/example-human-ai-free/001.jpg)
+![Human vs AI Freestyle 002](data/game_logs/example-human-ai-free/002.jpg)
+![Human vs AI Freestyle 003](data/game_logs/example-human-ai-free/003.jpg)
+![Human vs AI Freestyle 004](data/game_logs/example-human-ai-free/004.jpg)
+![Human vs AI Freestyle 005](data/game_logs/example-human-ai-free/005.jpg)
+![Human vs AI Freestyle 006](data/game_logs/example-human-ai-free/006.jpg)
+![Human vs AI Freestyle 007](data/game_logs/example-human-ai-free/007.jpg)
+![Human vs AI Freestyle 008](data/game_logs/example-human-ai-free/008.jpg)
+![Human vs AI Freestyle 009](data/game_logs/example-human-ai-free/009.jpg)
+![Human vs AI Freestyle 010](data/game_logs/example-human-ai-free/010.jpg)
+![Human vs AI Freestyle 011](data/game_logs/example-human-ai-free/011.jpg)
+![Human vs AI Freestyle 012](data/game_logs/example-human-ai-free/012.jpg)
+![Human vs AI Freestyle 013](data/game_logs/example-human-ai-free/013.jpg)
+![Human vs AI Freestyle 014](data/game_logs/example-human-ai-free/014.jpg)
+![Human vs AI Freestyle 015](data/game_logs/example-human-ai-free/015.jpg)
+![Human vs AI Freestyle 016](data/game_logs/example-human-ai-free/016.jpg)
+![Human vs AI Freestyle 017](data/game_logs/example-human-ai-free/017.jpg)
+![Human vs AI Freestyle 018](data/game_logs/example-human-ai-free/018.jpg)
+![Human vs AI Freestyle 019](data/game_logs/example-human-ai-free/019.jpg)
+![Human vs AI Freestyle 020](data/game_logs/example-human-ai-free/020.jpg)
+![Human vs AI Freestyle 021](data/game_logs/example-human-ai-free/021.jpg)
+![Human vs AI Freestyle 022](data/game_logs/example-human-ai-free/022.jpg)
+![Human vs AI Freestyle 023](data/game_logs/example-human-ai-free/023.jpg)
+![Human vs AI Freestyle 024](data/game_logs/example-human-ai-free/024.jpg)
+![Human vs AI Freestyle 025](data/game_logs/example-human-ai-free/025.jpg)
+![Human vs AI Freestyle 026](data/game_logs/example-human-ai-free/026.jpg)
+![Human vs AI Freestyle 027](data/game_logs/example-human-ai-free/027.jpg)
+![Human vs AI Freestyle 028](data/game_logs/example-human-ai-free/028.jpg)
+![Human vs AI Freestyle 029](data/game_logs/example-human-ai-free/029.jpg)
+![Human vs AI Freestyle 030](data/game_logs/example-human-ai-free/030.jpg)
+![Human vs AI Freestyle 031](data/game_logs/example-human-ai-free/031.jpg)
+![Human vs AI Freestyle 032](data/game_logs/example-human-ai-free/032.jpg)
+![Human vs AI Freestyle 033](data/game_logs/example-human-ai-free/033.jpg)
+![Human vs AI Freestyle 034](data/game_logs/example-human-ai-free/034.jpg)
+![Human vs AI Freestyle 035](data/game_logs/example-human-ai-free/035.jpg)
+![Human vs AI Freestyle 036](data/game_logs/example-human-ai-free/036.jpg)
 
 ## Quickstart
 
@@ -127,7 +192,7 @@ python main.py play --human black --log-file data/game_logs/manual_game.json
 - AI 在后台线程思考。
 - UI 右侧显示紧凑 AI 统计表，包括来源、落点、深度、节点数、NPS、耗时、评分和最近一手详情。
 - 黑棋禁手点会通过红色 X 覆盖层显示。
-- 人机模式支持悔棋一步。
+- 人机模式支持连续悔棋，每点一次撤销最近一手。
 - 日志保存为普通 JSON，使用 `indent=2`。
 
 ### 4. 机机自博弈

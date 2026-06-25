@@ -87,6 +87,21 @@ class GameSession:
         self.moves = self.moves[:-remove_count]
         self._rebuild_from_moves()
 
+    def undo_last_move(self) -> Move | None:
+        """撤销最近一手棋。
+
+        UI 的 Undo 按钮可以连续点击，因此这里提供更细粒度的“单手回退”。
+        每次回退后都从剩余历史重建棋盘，保证胜负状态、禁手覆盖和下一手颜色
+        都与历史完全一致。
+        """
+
+        if not self.moves:
+            return None
+        removed = self.moves[-1]
+        self.moves = self.moves[:-1]
+        self._rebuild_from_moves()
+        return removed
+
     def reset(self) -> None:
         """重新开始一局。"""
 
