@@ -21,24 +21,33 @@ class SearchResult:
     nodes: int
 
 
-def search_best_move(state: BitboardState, color: int, depth: int, time_limit: float) -> SearchResult:
+def search_best_move(
+    state: BitboardState,
+    color: int,
+    depth: int,
+    time_limit: float,
+    rule: str = "renju",
+) -> SearchResult:
     """搜索当前最佳落子。
 
     这是清晰版单线程 Negamax 入口。后续 Numba/并行搜索会保持类似返回契约，
     这样 UI、日志和 benchmark 不需要跟着搜索实现大改。
     """
-    timer = TimeControl(time_limit)
-    timer.start()
     nodes = 0
     best_score = -10**9
-    best_move = ordered_moves(state)[0]
+    candidates = ordered_moves(state, color, rule)
+    if not candidates:
+        return SearchResult(-1, -1, -10**9, depth, 0)
+    best_move = candidates[0]
+    timer = TimeControl(time_limit)
+    timer.start()
 
-    for row, col in ordered_moves(state):
+    for row, col in candidates:
         if timer.expired():
             break
         child = state.copy()
         child.place(row, col, color)
-        score, child_nodes = _negamax(child, _opponent(color), depth - 1, -10**9, 10**9, timer)
+        score, child_nodes = _negamax(child, _opponent(color), depth - 1, -10**9, 10**9, timer, rule)
         score = -score
         nodes += child_nodes + 1
         if score > best_score:
@@ -55,6 +64,7 @@ def _negamax(
     alpha: int,
     beta: int,
     timer: TimeControl,
+    rule: str,
 ) -> tuple[int, int]:
     """Alpha-Beta Negamax 递归。
 
@@ -66,10 +76,10 @@ def _negamax(
 
     nodes = 1
     best = -10**9
-    for row, col in ordered_moves(state)[:32]:
+    for row, col in ordered_moves(state, color, rule)[:32]:
         child = state.copy()
         child.place(row, col, color)
-        score, child_nodes = _negamax(child, _opponent(color), depth - 1, -beta, -alpha, timer)
+        score, child_nodes = _negamax(child, _opponent(color), depth - 1, -beta, -alpha, timer, rule)
         nodes += child_nodes
         score = -score
         if score > best:

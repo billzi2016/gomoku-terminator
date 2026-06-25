@@ -10,7 +10,7 @@ from time import time
 class MoveLog:
     """单步对局日志。
 
-    一步一行 JSON Lines，确保人机、机机和异常情况都能完整复盘。
+    对局文件使用普通 JSON，并用 `indent=2` 保存，方便人工检查和复盘调试。
     """
     game_id: str
     move_number: int
@@ -48,12 +48,34 @@ class MoveLog:
 
 
 class GameLogWriter:
-    """JSON Lines 对局日志写入器。"""
+    """JSON 对局日志写入器。
+
+    当前实现每次追加后重写整个 JSON 文件。五子棋最多 225 手，这个成本可以接受，
+    换来的是文件结构清晰、可读性强，并且满足 `indent=2` 的保存要求。
+    """
+
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.path.exists():
+            self._write({"version": 1, "moves": []})
 
     def append(self, record: MoveLog) -> None:
         """追加一条日志记录。"""
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
+
+        data = self.read()
+        data.setdefault("moves", []).append(asdict(record))
+        self._write(data)
+
+    def read(self) -> dict:
+        """读取当前日志文件。"""
+
+        with self.path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def _write(self, data: dict) -> None:
+        """以缩进 2 个空格写回 JSON 文件。"""
+
+        with self.path.open("w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")

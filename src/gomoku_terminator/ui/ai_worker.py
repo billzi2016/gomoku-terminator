@@ -16,12 +16,12 @@ class AIWorker:
         self._executor = ThreadPoolExecutor(max_workers=1)
         self._future: Future[SearchResult] | None = None
 
-    def start(self, state: BitboardState, color: int, depth: int, time_limit: float) -> None:
+    def start(self, state: BitboardState, color: int, depth: int, time_limit: float, rule: str = "renju") -> None:
         """启动一次 AI 搜索。
 
         传入的是 state.copy()，避免主线程继续落子或悔棋时影响后台搜索快照。
         """
-        self._future = self._executor.submit(search_best_move, state.copy(), color, depth, time_limit)
+        self._future = self._executor.submit(search_best_move, state.copy(), color, depth, time_limit, rule)
 
     def done(self) -> bool:
         """后台搜索是否已经完成。"""
