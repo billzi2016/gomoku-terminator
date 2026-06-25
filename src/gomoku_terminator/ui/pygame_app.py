@@ -133,6 +133,9 @@ def run_selfplay_mode(config) -> int:
 
     机机模式用于自博弈、benchmark 和日志生成。开启 UI 时也必须显示黑棋禁手红 X。
     """
+    if not config.no_ui:
+        return _run_selfplay_ui(config)
+
     for game_number in range(config.games):
         session = GameSession(config.rule)
         game_id = uuid4().hex
@@ -150,6 +153,101 @@ def run_selfplay_mode(config) -> int:
             move = session.place(result.row, result.col, color)
             _append_log(writer, game_id, session, move, config.rule, result.depth, result.nodes, result.score, elapsed_ms)
         print(f"selfplay game {game_number + 1}/{config.games}: {log_path}")
+    return 0
+
+
+def _run_selfplay_ui(config) -> int:
+    """启动可观看的机机对战 UI。
+
+    默认 selfplay 不加 `--no-ui` 时走这里。棋盘持续显示黑棋禁手红色 X，
+    方便观察 AI 为什么不能走某些点。
+    """
+
+    try:
+        import pygame
+    except ModuleNotFoundError:
+        print("Pygame is not installed. Install project dependencies before launching UI.")
+        return 1
+
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE + PANEL_HEIGHT))
+    pygame.display.set_caption("Gomoku Terminator Selfplay")
+    clock = pygame.time.Clock()
+    font = pygame.font.SysFont(None, 24)
+
+    session = GameSession(config.rule)
+    worker = AIWorker()
+    game_id = uuid4().hex
+    log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
+    log_writer = GameLogWriter(log_path)
+    status = "Selfplay ready"
+    running = True
+    ai_started = False
+    ai_started_at = 0.0
+    restart_button = pygame.Rect(16, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
+    pause_button = pygame.Rect(120, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
+    paused = False
+
+    while running:
+        draw_board(screen, session.state, config.rule)
+        _draw_panel(screen, font, status, restart_button, pause_button, pygame)
+
+        if not paused and session.winner is None and len(session.moves) < config.max_moves and not ai_started:
+            color = session.current_color
+            ai_started_at = time.perf_counter()
+            worker.start(session.state, color, AI_DEPTH, config.time_limit, config.rule)
+            ai_started = True
+            status = f"{color_name(color)} thinking"
+
+        if ai_started and worker.done():
+            color = session.current_color
+            result = worker.result()
+            ai_started = False
+            if result is not None and result.row >= 0:
+                try:
+                    move = session.place(result.row, result.col, color)
+                    elapsed_ms = (time.perf_counter() - ai_started_at) * 1000
+                    _append_log(
+                        log_writer,
+                        game_id,
+                        session,
+                        move,
+                        config.rule,
+                        result.depth,
+                        result.nodes,
+                        result.score,
+                        elapsed_ms,
+                    )
+                    status = f"{color_name(move.color)} -> ({move.row}, {move.col})"
+                except ValueError as exc:
+                    status = f"AI illegal move: {exc}"
+            if session.winner is not None:
+                status = f"{color_name(session.winner)} wins"
+            elif len(session.moves) >= config.max_moves:
+                status = f"max moves reached: {log_path}"
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if restart_button.collidepoint(event.pos):
+                    session.reset()
+                    game_id = uuid4().hex
+                    log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
+                    log_writer = GameLogWriter(log_path)
+                    ai_started = False
+                    paused = False
+                    status = "Selfplay restarted"
+                elif pause_button.collidepoint(event.pos):
+                    paused = not paused
+                    status = "Paused" if paused else "Selfplay resumed"
+
+        pygame.display.flip()
+        clock.tick(30)
+
+    worker.shutdown()
+    pygame.quit()
+    print(f"selfplay ui log: {log_path}")
     return 0
 
 
