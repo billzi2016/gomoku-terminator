@@ -60,6 +60,15 @@ def test_default_engine_is_numba_bitboard():
     config = config_from_args(args)
 
     assert config.engine == "numba_bitboard"
+    assert config.search_mode == "mild"
+
+
+def test_search_mode_alias_can_appear_after_subcommand():
+    argv = _normalize_global_options(["play", "--mode", "extreme"])
+    args = build_parser().parse_args(argv)
+    config = config_from_args(args)
+
+    assert config.search_mode == "extreme"
 
 
 def test_ai_depth_argument_can_appear_after_subcommand():

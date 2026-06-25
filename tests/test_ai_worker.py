@@ -20,6 +20,27 @@ def test_numba_bitboard_engine_returns_move_for_white():
     assert 0 <= result.col < 15
 
 
+def test_extreme_freestyle_bitboard_engine_returns_move():
+    state = BitboardState()
+    state.place(7, 7, BLACK)
+    state.place(7, 8, WHITE)
+
+    result = _search_with_engine(
+        state,
+        BLACK,
+        depth=3,
+        time_limit=0.2,
+        rule="freestyle",
+        engine="numba_bitboard",
+        threads=1,
+        search_mode="extreme",
+    )
+
+    assert 0 <= result.row < 15
+    assert 0 <= result.col < 15
+    assert result.depth >= 1
+
+
 def test_renju_black_uses_legal_fallback_path():
     state = BitboardState()
 

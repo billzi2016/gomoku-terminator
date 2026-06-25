@@ -24,6 +24,7 @@ class RuntimeConfig:
     human: str | None = None
     games: int = 1
     max_moves: int = 225
+    search_mode: str = "mild"
     position: str | None = None
     backend: str = "python"
     depth: int = 5
@@ -50,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-ui", action="store_true")
     parser.add_argument("--ai-depth", type=int, default=4)
     parser.add_argument("--engine", choices=("python", "numba_bitboard"), default="numba_bitboard")
+    parser.add_argument("--search-mode", "--mode", choices=("mild", "extreme"), default="mild")
 
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
@@ -90,6 +92,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         human=getattr(args, "human", None),
         games=getattr(args, "games", 1),
         max_moves=getattr(args, "max_moves", 225),
+        search_mode=args.search_mode,
         position=getattr(args, "position", None),
         backend=getattr(args, "backend", "python"),
         depth=getattr(args, "depth", 5),
@@ -155,6 +158,8 @@ def _normalize_global_options(argv: list[str] | None) -> list[str] | None:
         "--log-file",
         "--ai-depth",
         "--engine",
+        "--search-mode",
+        "--mode",
     }
     flag_options = {"--no-ui"}
     mode_index = next((i for i, item in enumerate(argv) if item in modes), None)

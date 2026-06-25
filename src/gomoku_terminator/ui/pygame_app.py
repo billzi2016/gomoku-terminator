@@ -84,6 +84,7 @@ def run_play_mode(config) -> int:
                 config.threads,
                 session.moves,
                 config.opening_book,
+                config.search_mode,
             )
             ai_started = True
             status = "AI thinking"
@@ -205,6 +206,7 @@ def run_selfplay_mode(config) -> int:
                 config.threads,
                 session.moves,
                 config.opening_book,
+                config.search_mode,
             )
             elapsed_ms = (time.perf_counter() - started) * 1000
             if result.row < 0:
@@ -283,6 +285,7 @@ def _run_selfplay_ui(config) -> int:
                 config.threads,
                 session.moves,
                 config.opening_book,
+                config.search_mode,
             )
             ai_started = True
             status = f"{color_name(color)} thinking"
@@ -397,19 +400,20 @@ def _draw_runtime_line(screen, font, config, stats: list[dict], pygame) -> None:
     latest_nps = _compact_number(stats[-1]["nps"]) if stats else "0"
     lines = (
         f"engine {config.engine}",
-        f"rule {config.rule}   depth {config.ai_depth}",
-        f"time {config.time_limit:g}s   threads {config.threads}   speed {latest_nps} n/s",
+        f"rule {config.rule}   mode {config.search_mode}",
+        f"depth {config.ai_depth}   time {config.time_limit:g}s   threads {config.threads}",
+        f"speed {latest_nps} n/s",
     )
     # 参数框按内容收缩并靠棋盘右侧放置。之前固定 520px 宽会在机机模式
     # 留出大块空白，还会挤压左侧状态文本；动态宽度可以同时解决两件事。
     text_width = max(font.size(line)[0] for line in lines)
     box_width = min(520, text_width + 32)
-    box_rect = pygame.Rect(SCREEN_SIZE - box_width - 22, SCREEN_SIZE + 10, box_width, 92)
+    box_rect = pygame.Rect(SCREEN_SIZE - box_width - 22, SCREEN_SIZE + 6, box_width, 100)
     pygame.draw.rect(screen, (225, 211, 183), box_rect, border_radius=4)
     pygame.draw.rect(screen, (170, 154, 126), box_rect, 1, border_radius=4)
     for i, line in enumerate(lines):
         text = font.render(line, True, (65, 65, 65))
-        screen.blit(text, (box_rect.x + 16, box_rect.y + 8 + i * 30))
+        screen.blit(text, (box_rect.x + 16, box_rect.y + 8 + i * 23))
 
 
 def _game_output_paths(config, game_id: str) -> tuple[Path, Path]:

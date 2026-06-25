@@ -6,7 +6,11 @@ from typing import Any
 
 from gomoku_terminator.board.bitboard import BLACK, BitboardState
 from gomoku_terminator.engine.negamax import SearchResult, search_best_move
-from gomoku_terminator.engine.numba_bitboard_search import bitboard_backend_available, search_bitboard_arrays
+from gomoku_terminator.engine.numba_bitboard_search import (
+    bitboard_backend_available,
+    search_bitboard_arrays,
+    search_bitboard_arrays_extreme,
+)
 from gomoku_terminator.engine.tactics import double_threat_move, immediate_block_move, immediate_win_move
 from gomoku_terminator.opening.book import OpeningBook
 from gomoku_terminator.rules.renju_forbidden import is_forbidden_move
@@ -33,6 +37,7 @@ class AIWorker:
         threads: int = 24,
         moves: list[Any] | None = None,
         opening_book: str | None = None,
+        search_mode: str = "mild",
     ) -> None:
         """启动一次 AI 搜索。
 
@@ -49,6 +54,7 @@ class AIWorker:
             threads,
             list(moves or []),
             opening_book,
+            search_mode,
         )
 
     def done(self) -> bool:
@@ -76,6 +82,7 @@ def _search_with_engine(
     threads: int,
     moves: list[Any] | None = None,
     opening_book: str | None = None,
+    search_mode: str = "mild",
 ) -> SearchResult:
     """按 UI 引擎参数搜索。
 
@@ -93,7 +100,10 @@ def _search_with_engine(
 
     if engine == "numba_bitboard" and bitboard_backend_available():
         if not (rule == "renju" and color == BLACK):
-            result = search_bitboard_arrays(state.black, state.white, color, depth, threads)
+            if search_mode == "extreme" and rule == "freestyle":
+                result = search_bitboard_arrays_extreme(state.black, state.white, color, depth, threads, time_limit)
+            else:
+                result = search_bitboard_arrays(state.black, state.white, color, depth, threads)
             if result.row >= 0:
                 index = result.row * 15 + result.col
                 if not state.occupied_at_index(index):

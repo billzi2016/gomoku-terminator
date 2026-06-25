@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 
 import numpy as np
 
@@ -107,6 +108,60 @@ def search_bitboard_arrays(
     white_bits = white.astype(np.uint64, copy=True)
     row, col, score, nodes = _parallel_root_search_bits(black_bits, white_bits, int(color), max(1, int(depth)))
     return BitboardSearchResult(int(row), int(col), int(score), int(depth), int(nodes), int(nb.get_num_threads()))
+
+
+def search_bitboard_arrays_extreme(
+    black: np.ndarray,
+    white: np.ndarray,
+    color: int,
+    depth: int,
+    threads: int,
+    time_limit: float,
+) -> BitboardSearchResult:
+    """freestyle 极限模式入口：迭代加深到目标层数。
+
+    Numba 递归内目前还不能被 Python 定时器抢占，所以这里不直接一口气硬搜
+    16/20 层，而是从浅层逐步加深。每完成一层就保留完整结果；如果剩余时间
+    不足以支撑下一层，就返回上一层的稳定答案。
+    """
+
+    if nb is None:
+        raise RuntimeError("Numba is not installed")
+    nb.set_num_threads(max(1, int(threads)))
+    target_depth = max(1, int(depth))
+    deadline = time.perf_counter() + max(0.001, float(time_limit))
+    best: BitboardSearchResult | None = None
+    total_nodes = 0
+    last_elapsed = 0.0
+
+    for current_depth in range(1, target_depth + 1):
+        now = time.perf_counter()
+        if best is not None and now >= deadline:
+            break
+        remaining = deadline - now
+        if best is not None and last_elapsed > 0 and remaining < last_elapsed * 1.8:
+            break
+
+        black_bits = black.astype(np.uint64, copy=True)
+        white_bits = white.astype(np.uint64, copy=True)
+        started = time.perf_counter()
+        row, col, score, nodes = _parallel_root_search_bits(black_bits, white_bits, int(color), current_depth)
+        last_elapsed = time.perf_counter() - started
+        total_nodes += int(nodes)
+        best = BitboardSearchResult(
+            int(row),
+            int(col),
+            int(score),
+            int(current_depth),
+            int(total_nodes),
+            int(nb.get_num_threads()),
+        )
+        if abs(int(score)) >= WIN_SCORE:
+            break
+
+    if best is None:
+        return search_bitboard_arrays(black, white, color, 1, threads)
+    return best
 
 
 def _fill_midgame_bits(black: np.ndarray, white: np.ndarray) -> None:

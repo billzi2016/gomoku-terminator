@@ -1,6 +1,6 @@
 # Robust Run
 
-这份文件只放“强度测试 / 稳定性测试”命令。日常完整说明看 `QUICKSTART.md`。
+这份文件只放“强度测试 / 稳定性测试”命令。日常完整说明看 `QUICKSTART.md`。这里使用默认 `--mode mild`；更激进的 freestyle 16 层命令看 `EXTREME_RUN.md`。
 
 ## 人机 UI 最终测试
 
@@ -111,6 +111,7 @@ python3 -B -m pytest -q -p no:cacheprovider tests/test_cli.py tests/test_ai_work
 ## 参数说明
 
 - `--engine numba_bitboard`：当前默认高性能对局引擎。
+- `--mode mild`：默认稳定搜索模式，不写也等价于 mild。
 - `--ai-depth 10`：最终测试建议深度，不是硬上限。
 - `--time-limit 10`：最终测试建议单步时间，不是硬上限。
 - `--threads 24`：面向 M2 Ultra 24 核。

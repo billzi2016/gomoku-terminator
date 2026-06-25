@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import time
 
-from gomoku_terminator.board.bitboard import BLACK, BitboardState
+from gomoku_terminator.board.bitboard import BLACK, WHITE, BitboardState
 from gomoku_terminator.engine.negamax import search_best_move
-from gomoku_terminator.engine.numba_bitboard_search import bitboard_backend_available, run_bitboard_benchmark
+from gomoku_terminator.engine.numba_bitboard_search import (
+    bitboard_backend_available,
+    run_bitboard_benchmark,
+    search_bitboard_arrays_extreme,
+)
 from gomoku_terminator.engine.numba_search import numba_available, search_benchmark
 
 
@@ -43,10 +47,36 @@ def run_benchmark(config) -> int:
             return 1
         run_bitboard_benchmark(depth=1, threads=config.threads, scenario=config.scenario)
         started = time.perf_counter()
-        result = run_bitboard_benchmark(depth=config.depth, threads=config.threads, scenario=config.scenario)
+        if config.search_mode == "extreme":
+            state = BitboardState()
+            if config.scenario == "midgame":
+                for row, col, color in (
+                    (7, 7, BLACK),
+                    (7, 6, WHITE),
+                    (7, 8, BLACK),
+                    (8, 8, WHITE),
+                    (8, 7, BLACK),
+                    (6, 7, WHITE),
+                    (6, 8, BLACK),
+                    (9, 7, WHITE),
+                    (8, 9, BLACK),
+                    (5, 8, WHITE),
+                ):
+                    state.place(row, col, color)
+            result = search_bitboard_arrays_extreme(
+                state.black,
+                state.white,
+                BLACK,
+                config.depth,
+                config.threads,
+                config.time_limit,
+            )
+        else:
+            result = run_bitboard_benchmark(depth=config.depth, threads=config.threads, scenario=config.scenario)
         elapsed = max(0.000001, time.perf_counter() - started)
         nps = result.nodes / elapsed
         print("backend=numba_bitboard")
+        print(f"search_mode={config.search_mode}")
         print(f"rule={config.rule}")
         print(f"time_limit={config.time_limit:.3f}s")
         print(f"threads={result.threads}")
