@@ -1,6 +1,6 @@
 # Robust Run
 
-这份文件只放“强度测试 / 稳定性测试”命令。日常完整说明看 `QUICKSTART.md`。这里使用默认 `--mode mild`；更激进的 freestyle 16 层命令看 `EXTREME_RUN.md`。
+这份文件只放“强度测试 / 稳定性测试”命令。日常完整说明看 `QUICKSTART.md`。这里使用默认 `--mode mild`；更激进的 freestyle 20 层命令看 `EXTREME_RUN.md`。
 
 ## 人机 UI 最终测试
 

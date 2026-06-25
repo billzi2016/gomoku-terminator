@@ -37,6 +37,8 @@ def run_benchmark(config) -> int:
         print(f"score={result.score}")
         print(f"depth={result.depth}")
         print(f"nodes={result.nodes}")
+        if result.pv:
+            print(f"pv={result.pv}")
         print(f"elapsed_ms={elapsed * 1000:.2f}")
         print(f"nps={nps:.0f}")
         return 0
@@ -94,6 +96,8 @@ def run_benchmark(config) -> int:
         print(f"score={result.score}")
         print(f"depth={result.depth}")
         print(f"nodes={result.nodes}")
+        if result.pv:
+            print(f"pv={result.pv}")
         print(f"elapsed_ms={elapsed * 1000:.2f}")
         print(f"nps={nps:.0f}")
         return 0

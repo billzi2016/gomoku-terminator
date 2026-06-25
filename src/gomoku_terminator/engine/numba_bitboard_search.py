@@ -25,6 +25,10 @@ EXTREME_ROOT_MOVE_LIMIT = 32
 EXTREME_DEEP_MOVE_LIMIT = 8
 EXTREME_MID_MOVE_LIMIT = 12
 EXTREME_SHALLOW_MOVE_LIMIT = 16
+TT_SIZE = 1 << 20
+TT_EXACT = 0
+TT_LOWER = 1
+TT_UPPER = 2
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,7 @@ class BitboardSearchResult:
     depth: int
     nodes: int
     threads: int
+    pv: tuple[tuple[int, int], ...] = ()
 
 
 def bitboard_backend_available() -> bool:
@@ -111,7 +116,8 @@ def search_bitboard_arrays(
     black_bits = black.astype(np.uint64, copy=True)
     white_bits = white.astype(np.uint64, copy=True)
     row, col, score, nodes = _parallel_root_search_bits(black_bits, white_bits, int(color), max(1, int(depth)))
-    return BitboardSearchResult(int(row), int(col), int(score), int(depth), int(nodes), int(nb.get_num_threads()))
+    pv = () if row < 0 else ((int(row), int(col)),)
+    return BitboardSearchResult(int(row), int(col), int(score), int(depth), int(nodes), int(nb.get_num_threads()), pv)
 
 
 def search_bitboard_arrays_extreme(
@@ -125,7 +131,7 @@ def search_bitboard_arrays_extreme(
     """freestyle 极限模式入口：迭代加深到目标层数。
 
     Numba 递归内目前还不能被 Python 定时器抢占，所以这里不直接一口气硬搜
-    16/20 层，而是从浅层逐步加深。每完成一层就保留完整结果；如果剩余时间
+    20 层，而是从浅层逐步加深。每完成一层就保留完整结果；如果剩余时间
     不足以支撑下一层，就返回上一层的稳定答案。
     """
 
@@ -137,6 +143,11 @@ def search_bitboard_arrays_extreme(
     best: BitboardSearchResult | None = None
     total_nodes = 0
     last_elapsed = 0.0
+    tt_keys = np.zeros(TT_SIZE, dtype=np.uint64)
+    tt_depths = np.zeros(TT_SIZE, dtype=np.int16)
+    tt_scores = np.zeros(TT_SIZE, dtype=np.int32)
+    tt_flags = np.zeros(TT_SIZE, dtype=np.int8)
+    tt_best = np.full(TT_SIZE, -1, dtype=np.int16)
 
     for current_depth in range(1, target_depth + 1):
         now = time.perf_counter()
@@ -149,9 +160,20 @@ def search_bitboard_arrays_extreme(
         black_bits = black.astype(np.uint64, copy=True)
         white_bits = white.astype(np.uint64, copy=True)
         started = time.perf_counter()
-        row, col, score, nodes = _parallel_root_search_bits_extreme(black_bits, white_bits, int(color), current_depth)
+        row, col, score, nodes, pv0 = _root_search_bits_extreme_tt(
+            black_bits,
+            white_bits,
+            int(color),
+            current_depth,
+            tt_keys,
+            tt_depths,
+            tt_scores,
+            tt_flags,
+            tt_best,
+        )
         last_elapsed = time.perf_counter() - started
         total_nodes += int(nodes)
+        pv = () if pv0 < 0 else ((int(pv0 // BOARD_SIZE), int(pv0 % BOARD_SIZE)),)
         best = BitboardSearchResult(
             int(row),
             int(col),
@@ -159,6 +181,7 @@ def search_bitboard_arrays_extreme(
             int(current_depth),
             int(total_nodes),
             int(nb.get_num_threads()),
+            pv,
         )
         if abs(int(score)) >= WIN_SCORE:
             break
@@ -204,6 +227,28 @@ if nb is not None:
     @nb.njit(cache=False)
     def _has_bit(bits: np.ndarray, index: int) -> bool:
         return (bits[_word(index)] & _mask(index)) != 0
+
+    @nb.njit(cache=False)
+    def _mix64(value: np.uint64) -> np.uint64:
+        value = (value ^ (value >> np.uint64(30))) * np.uint64(0xBF58476D1CE4E5B9)
+        value = (value ^ (value >> np.uint64(27))) * np.uint64(0x94D049BB133111EB)
+        return value ^ (value >> np.uint64(31))
+
+    @nb.njit(cache=False)
+    def _hash_bits(black: np.ndarray, white: np.ndarray, color: int) -> np.uint64:
+        """基于 4xuint64 棋盘计算稳定哈希。
+
+        这里不用 Python Zobrist 表，直接混合四个 word 和 side-to-move，方便在
+        Numba 递归里零对象调用。
+        """
+
+        value = np.uint64(0x9E3779B97F4A7C15) if color == BLACK else np.uint64(0xD1B54A32D192ED03)
+        for i in range(BIT_WORDS):
+            value ^= _mix64(black[i] + np.uint64(i + 1) * np.uint64(0x9E3779B97F4A7C15))
+            value ^= _mix64(white[i] + np.uint64(i + 5) * np.uint64(0xD1B54A32D192ED03))
+        if value == np.uint64(0):
+            value = np.uint64(1)
+        return value
 
     @nb.njit(cache=False)
     def _occupied_count(black: np.ndarray, white: np.ndarray) -> int:
@@ -343,7 +388,7 @@ if nb is not None:
     def _extreme_limit_for_depth(depth: int, is_root: bool) -> int:
         """extreme 专用候选限制。
 
-        16 层要能落地，必须比 mild 更重视强制手和排序结果。root 保留足够选择，
+        20 层要能落地，必须比 mild 更重视强制手和排序结果。root 保留足够选择，
         深层则只保留最高价值威胁点，让迭代加深尽可能完成更深层。
         """
 
@@ -387,6 +432,80 @@ if nb is not None:
                 tmp_score = scores[i]
                 scores[i] = scores[best_i]
                 scores[best_i] = tmp_score
+
+    @nb.njit(cache=False)
+    def _promote_best_move(moves: np.ndarray, count: int, best_move: int) -> None:
+        """把置换表中的历史最佳手移到候选首位。"""
+
+        if best_move < 0:
+            return
+        for i in range(count):
+            if int(moves[i]) == best_move:
+                tmp = moves[0]
+                moves[0] = moves[i]
+                moves[i] = tmp
+                return
+
+    @nb.njit(cache=False)
+    def _tt_index(key: np.uint64) -> int:
+        return int(key & np.uint64(TT_SIZE - 1))
+
+    @nb.njit(cache=False)
+    def _tt_probe(
+        key: np.uint64,
+        depth: int,
+        alpha: int,
+        beta: int,
+        tt_keys: np.ndarray,
+        tt_depths: np.ndarray,
+        tt_scores: np.ndarray,
+        tt_flags: np.ndarray,
+        tt_best: np.ndarray,
+    ) -> tuple[bool, int, int]:
+        index = _tt_index(key)
+        if tt_keys[index] != key or tt_depths[index] < depth:
+            return False, 0, -1
+        score = int(tt_scores[index])
+        flag = int(tt_flags[index])
+        if flag == TT_EXACT:
+            return True, score, int(tt_best[index])
+        if flag == TT_LOWER and score >= beta:
+            return True, score, int(tt_best[index])
+        if flag == TT_UPPER and score <= alpha:
+            return True, score, int(tt_best[index])
+        return False, 0, int(tt_best[index])
+
+    @nb.njit(cache=False)
+    def _tt_best_move(
+        key: np.uint64,
+        tt_keys: np.ndarray,
+        tt_best: np.ndarray,
+    ) -> int:
+        index = _tt_index(key)
+        if tt_keys[index] == key:
+            return int(tt_best[index])
+        return -1
+
+    @nb.njit(cache=False)
+    def _tt_store(
+        key: np.uint64,
+        depth: int,
+        score: int,
+        flag: int,
+        best_move: int,
+        tt_keys: np.ndarray,
+        tt_depths: np.ndarray,
+        tt_scores: np.ndarray,
+        tt_flags: np.ndarray,
+        tt_best: np.ndarray,
+    ) -> None:
+        index = _tt_index(key)
+        if tt_keys[index] == np.uint64(0) or tt_keys[index] == key or depth >= tt_depths[index]:
+            tt_keys[index] = key
+            tt_depths[index] = depth
+            tt_scores[index] = score
+            tt_flags[index] = flag
+            tt_best[index] = best_move
 
     @nb.njit(cache=False)
     def _move_score_bits(black: np.ndarray, white: np.ndarray, move: int, color: int) -> int:
@@ -552,14 +671,37 @@ if nb is not None:
         depth: int,
         alpha: int,
         beta: int,
+        tt_keys: np.ndarray,
+        tt_depths: np.ndarray,
+        tt_scores: np.ndarray,
+        tt_flags: np.ndarray,
+        tt_best: np.ndarray,
     ) -> tuple[int, int]:
         if depth <= 0:
             return _evaluate_bits(black, white, color), 1
+
+        original_alpha = alpha
+        key = _hash_bits(black, white, color)
+        hit, cached_score, cached_best = _tt_probe(
+            key,
+            depth,
+            alpha,
+            beta,
+            tt_keys,
+            tt_depths,
+            tt_scores,
+            tt_flags,
+            tt_best,
+        )
+        if hit:
+            return cached_score, 1
 
         moves = np.empty(POINT_COUNT, dtype=np.int16)
         count = _generate_moves_bits(black, white, color, moves)
         if count == 0:
             return _evaluate_bits(black, white, color), 1
+        if cached_best >= 0:
+            _promote_best_move(moves, count, cached_best)
         limit = _extreme_limit_for_depth(depth, False)
         if count > limit:
             count = limit
@@ -567,6 +709,7 @@ if nb is not None:
         opponent = WHITE if color == BLACK else BLACK
         own = black if color == BLACK else white
         best = -1_000_000_000
+        best_move = -1
         nodes = 1
         for i in range(count):
             move = int(moves[i])
@@ -577,16 +720,35 @@ if nb is not None:
                 score = WIN_SCORE
                 child_nodes = 1
             else:
-                child_score, child_nodes = _negamax_bits_extreme(black, white, opponent, depth - 1, -beta, -alpha)
+                child_score, child_nodes = _negamax_bits_extreme(
+                    black,
+                    white,
+                    opponent,
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    tt_keys,
+                    tt_depths,
+                    tt_scores,
+                    tt_flags,
+                    tt_best,
+                )
                 score = -child_score
             _remove(black, white, move, color)
             nodes += child_nodes
             if score > best:
                 best = score
+                best_move = move
             if score > alpha:
                 alpha = score
             if alpha >= beta:
                 break
+        flag = TT_EXACT
+        if best <= original_alpha:
+            flag = TT_UPPER
+        elif best >= beta:
+            flag = TT_LOWER
+        _tt_store(key, depth, best, flag, best_move, tt_keys, tt_depths, tt_scores, tt_flags, tt_best)
         return best, nodes
 
     @nb.njit(parallel=True, cache=False)
@@ -639,23 +801,32 @@ if nb is not None:
         best_index = int(root_moves[best_i])
         return best_index // BOARD_SIZE, best_index % BOARD_SIZE, int(best_score), int(total_nodes)
 
-    @nb.njit(parallel=True, cache=False)
-    def _parallel_root_search_bits_extreme(
+    @nb.njit(cache=False)
+    def _root_search_bits_extreme_tt(
         black: np.ndarray,
         white: np.ndarray,
         color: int,
         depth: int,
-    ) -> tuple[int, int, int, int]:
+        tt_keys: np.ndarray,
+        tt_depths: np.ndarray,
+        tt_scores: np.ndarray,
+        tt_flags: np.ndarray,
+        tt_best: np.ndarray,
+    ) -> tuple[int, int, int, int, int]:
         root_moves = np.empty(POINT_COUNT, dtype=np.int16)
         root_count = _generate_moves_bits(black, white, color, root_moves)
         root_limit = _extreme_limit_for_depth(depth, True)
         if root_count > root_limit:
             root_count = root_limit
-        scores = np.empty(root_count, dtype=np.int64)
-        nodes = np.empty(root_count, dtype=np.int64)
         opponent = WHITE if color == BLACK else BLACK
 
-        for i in prange(root_count):
+        best_index = int(root_moves[0])
+        best_score = -1_000_000_000
+        total_nodes = 0
+        alpha = -1_000_000_000
+        beta = 1_000_000_000
+
+        for i in range(root_count):
             local_black = black.copy()
             local_white = white.copy()
             move = int(root_moves[i])
@@ -664,27 +835,27 @@ if nb is not None:
             _place(local_black, local_white, move, color)
             own = local_black if color == BLACK else local_white
             if _has_five_from(own, row, col):
-                scores[i] = WIN_SCORE
-                nodes[i] = 1
+                score = WIN_SCORE
+                child_nodes = 1
             else:
                 score, child_nodes = _negamax_bits_extreme(
                     local_black,
                     local_white,
                     opponent,
                     depth - 1,
-                    -1_000_000_000,
-                    1_000_000_000,
+                    -beta,
+                    -alpha,
+                    tt_keys,
+                    tt_depths,
+                    tt_scores,
+                    tt_flags,
+                    tt_best,
                 )
-                scores[i] = -score
-                nodes[i] = child_nodes + 1
-
-        best_i = 0
-        best_score = scores[0]
-        total_nodes = 0
-        for i in range(root_count):
-            total_nodes += int(nodes[i])
-            if scores[i] > best_score:
-                best_score = scores[i]
-                best_i = i
-        best_index = int(root_moves[best_i])
-        return best_index // BOARD_SIZE, best_index % BOARD_SIZE, int(best_score), int(total_nodes)
+                score = -score
+            total_nodes += child_nodes + 1
+            if score > best_score:
+                best_score = score
+                best_index = move
+            if score > alpha:
+                alpha = score
+        return best_index // BOARD_SIZE, best_index % BOARD_SIZE, int(best_score), int(total_nodes), best_index
