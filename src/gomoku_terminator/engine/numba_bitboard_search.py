@@ -6,14 +6,17 @@ import numpy as np
 
 try:
     import numba as nb
+    from numba import prange
 except Exception:  # pragma: no cover
     nb = None
+    prange = range
 
 BOARD_SIZE = 15
 POINT_COUNT = 225
 BIT_WORDS = 4
 BLACK = 1
 WHITE = 2
+WIN_SCORE = 1_000_000
 
 
 @dataclass(frozen=True)
@@ -25,6 +28,18 @@ class BitboardBenchmarkResult:
 
     occupied: int
     win: bool
+
+
+@dataclass(frozen=True)
+class BitboardSearchResult:
+    """4xuint64 搜索 benchmark 结果。"""
+
+    row: int
+    col: int
+    score: int
+    depth: int
+    nodes: int
+    threads: int
 
 
 def bitboard_backend_available() -> bool:
@@ -51,6 +66,57 @@ def run_bitboard_smoke() -> BitboardBenchmarkResult:
     return BitboardBenchmarkResult(int(occupied), bool(win))
 
 
+def run_bitboard_benchmark(depth: int, threads: int, scenario: str = "midgame") -> BitboardSearchResult:
+    """运行 4xuint64 Numba 搜索 benchmark。
+
+    这是第三后端的真正可执行入口。它不替代可读 Python 版，也不替代矩阵 Numba
+    中间版；它用于验证极限 bitboard 表示能实际搜索并输出 NPS。
+    """
+
+    if nb is None:
+        raise RuntimeError("Numba is not installed")
+    nb.set_num_threads(max(1, int(threads)))
+    black = np.zeros(BIT_WORDS, dtype=np.uint64)
+    white = np.zeros(BIT_WORDS, dtype=np.uint64)
+    if scenario == "midgame":
+        _fill_midgame_bits(black, white)
+    row, col, score, nodes = _parallel_root_search_bits(black, white, BLACK, max(1, int(depth)))
+    return BitboardSearchResult(int(row), int(col), int(score), int(depth), int(nodes), int(nb.get_num_threads()))
+
+
+def search_bitboard_arrays(
+    black: np.ndarray,
+    white: np.ndarray,
+    color: int,
+    depth: int,
+    threads: int,
+) -> BitboardSearchResult:
+    """从当前 4xuint64 棋盘搜索最佳点。
+
+    UI / selfplay 会通过这个入口使用最高效的 bitboard 后端。传入数组会复制，
+    不会修改 Python 可读棋盘真源。
+    """
+
+    if nb is None:
+        raise RuntimeError("Numba is not installed")
+    nb.set_num_threads(max(1, int(threads)))
+    black_bits = black.astype(np.uint64, copy=True)
+    white_bits = white.astype(np.uint64, copy=True)
+    row, col, score, nodes = _parallel_root_search_bits(black_bits, white_bits, int(color), max(1, int(depth)))
+    return BitboardSearchResult(int(row), int(col), int(score), int(depth), int(nodes), int(nb.get_num_threads()))
+
+
+def _fill_midgame_bits(black: np.ndarray, white: np.ndarray) -> None:
+    """填充和矩阵 Numba 相同风格的中盘压测局面。"""
+
+    black_points = ((7, 7), (7, 8), (8, 7), (6, 8), (8, 9), (5, 6), (9, 8), (6, 6))
+    white_points = ((7, 6), (8, 8), (6, 7), (9, 7), (5, 8), (8, 5), (9, 9))
+    for row, col in black_points:
+        _set_bit(black, row * BOARD_SIZE + col)
+    for row, col in white_points:
+        _set_bit(white, row * BOARD_SIZE + col)
+
+
 if nb is not None:
 
     @nb.njit(cache=False)
@@ -70,6 +136,10 @@ if nb is not None:
         bits[_word(index)] = bits[_word(index)] | _mask(index)
 
     @nb.njit(cache=False)
+    def _clear_bit(bits: np.ndarray, index: int) -> None:
+        bits[_word(index)] = bits[_word(index)] & ~_mask(index)
+
+    @nb.njit(cache=False)
     def _has_bit(bits: np.ndarray, index: int) -> bool:
         return (bits[_word(index)] & _mask(index)) != 0
 
@@ -80,6 +150,24 @@ if nb is not None:
             if _has_bit(black, index) or _has_bit(white, index):
                 total += 1
         return total
+
+    @nb.njit(cache=False)
+    def _is_empty(black: np.ndarray, white: np.ndarray, index: int) -> bool:
+        return not _has_bit(black, index) and not _has_bit(white, index)
+
+    @nb.njit(cache=False)
+    def _place(black: np.ndarray, white: np.ndarray, index: int, color: int) -> None:
+        if color == BLACK:
+            _set_bit(black, index)
+        else:
+            _set_bit(white, index)
+
+    @nb.njit(cache=False)
+    def _remove(black: np.ndarray, white: np.ndarray, index: int, color: int) -> None:
+        if color == BLACK:
+            _clear_bit(black, index)
+        else:
+            _clear_bit(white, index)
 
     @nb.njit(cache=False)
     def _has_five(bits: np.ndarray) -> bool:
@@ -103,6 +191,33 @@ if nb is not None:
         return False
 
     @nb.njit(cache=False)
+    def _has_five_from(bits: np.ndarray, row: int, col: int) -> bool:
+        dirs = ((0, 1), (1, 0), (1, 1), (1, -1))
+        for k in range(4):
+            dr = dirs[k][0]
+            dc = dirs[k][1]
+            total = 1
+            r = row + dr
+            c = col + dc
+            while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
+                if not _has_bit(bits, r * BOARD_SIZE + c):
+                    break
+                total += 1
+                r += dr
+                c += dc
+            r = row - dr
+            c = col - dc
+            while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
+                if not _has_bit(bits, r * BOARD_SIZE + c):
+                    break
+                total += 1
+                r -= dr
+                c -= dc
+            if total >= 5:
+                return True
+        return False
+
+    @nb.njit(cache=False)
     def _same_line(start: int, current: int, step: int) -> bool:
         start_row = start // BOARD_SIZE
         start_col = start - start_row * BOARD_SIZE
@@ -117,3 +232,143 @@ if nb is not None:
         if step == 14:
             return row - start_row == start_col - col
         return False
+
+    @nb.njit(cache=False)
+    def _generate_moves_bits(black: np.ndarray, white: np.ndarray, moves: np.ndarray) -> int:
+        marker = np.zeros(POINT_COUNT, dtype=np.int8)
+        occupied = 0
+        count = 0
+        for index in range(POINT_COUNT):
+            if _is_empty(black, white, index):
+                continue
+            occupied += 1
+            row = index // BOARD_SIZE
+            col = index - row * BOARD_SIZE
+            for dr in range(-2, 3):
+                for dc in range(-2, 3):
+                    if dr == 0 and dc == 0:
+                        continue
+                    r = row + dr
+                    c = col + dc
+                    if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
+                        move = r * BOARD_SIZE + c
+                        if marker[move] == 0 and _is_empty(black, white, move):
+                            marker[move] = 1
+                            moves[count] = move
+                            count += 1
+        if occupied == 0:
+            moves[0] = 7 * BOARD_SIZE + 7
+            return 1
+        return count
+
+    @nb.njit(cache=False)
+    def _evaluate_bits(black: np.ndarray, white: np.ndarray, color: int) -> int:
+        own = black if color == BLACK else white
+        opp = white if color == BLACK else black
+        return _evaluate_one(own) - _evaluate_one(opp)
+
+    @nb.njit(cache=False)
+    def _evaluate_one(bits: np.ndarray) -> int:
+        score = 0
+        center = 7
+        for index in range(POINT_COUNT):
+            if not _has_bit(bits, index):
+                continue
+            row = index // BOARD_SIZE
+            col = index - row * BOARD_SIZE
+            dist = abs(row - center) + abs(col - center)
+            if dist < 14:
+                score += 14 - dist
+            score += 3
+        if _has_five(bits):
+            score += WIN_SCORE
+        return score
+
+    @nb.njit(cache=False)
+    def _negamax_bits(
+        black: np.ndarray,
+        white: np.ndarray,
+        color: int,
+        depth: int,
+        alpha: int,
+        beta: int,
+    ) -> tuple[int, int]:
+        if depth <= 0:
+            return _evaluate_bits(black, white, color), 1
+
+        moves = np.empty(POINT_COUNT, dtype=np.int16)
+        count = _generate_moves_bits(black, white, moves)
+        if count == 0:
+            return _evaluate_bits(black, white, color), 1
+
+        opponent = WHITE if color == BLACK else BLACK
+        own = black if color == BLACK else white
+        best = -1_000_000_000
+        nodes = 1
+        for i in range(count):
+            move = int(moves[i])
+            row = move // BOARD_SIZE
+            col = move - row * BOARD_SIZE
+            _place(black, white, move, color)
+            if _has_five_from(own, row, col):
+                score = WIN_SCORE
+                child_nodes = 1
+            else:
+                child_score, child_nodes = _negamax_bits(black, white, opponent, depth - 1, -beta, -alpha)
+                score = -child_score
+            _remove(black, white, move, color)
+            nodes += child_nodes
+            if score > best:
+                best = score
+            if score > alpha:
+                alpha = score
+            if alpha >= beta:
+                break
+        return best, nodes
+
+    @nb.njit(parallel=True, cache=False)
+    def _parallel_root_search_bits(
+        black: np.ndarray,
+        white: np.ndarray,
+        color: int,
+        depth: int,
+    ) -> tuple[int, int, int, int]:
+        root_moves = np.empty(POINT_COUNT, dtype=np.int16)
+        root_count = _generate_moves_bits(black, white, root_moves)
+        scores = np.empty(root_count, dtype=np.int64)
+        nodes = np.empty(root_count, dtype=np.int64)
+        opponent = WHITE if color == BLACK else BLACK
+
+        for i in prange(root_count):
+            local_black = black.copy()
+            local_white = white.copy()
+            move = int(root_moves[i])
+            row = move // BOARD_SIZE
+            col = move - row * BOARD_SIZE
+            _place(local_black, local_white, move, color)
+            own = local_black if color == BLACK else local_white
+            if _has_five_from(own, row, col):
+                scores[i] = WIN_SCORE
+                nodes[i] = 1
+            else:
+                score, child_nodes = _negamax_bits(
+                    local_black,
+                    local_white,
+                    opponent,
+                    depth - 1,
+                    -1_000_000_000,
+                    1_000_000_000,
+                )
+                scores[i] = -score
+                nodes[i] = child_nodes + 1
+
+        best_i = 0
+        best_score = scores[0]
+        total_nodes = 0
+        for i in range(root_count):
+            total_nodes += int(nodes[i])
+            if scores[i] > best_score:
+                best_score = scores[i]
+                best_i = i
+        best_index = int(root_moves[best_i])
+        return best_index // BOARD_SIZE, best_index % BOARD_SIZE, int(best_score), int(total_nodes)

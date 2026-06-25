@@ -29,18 +29,26 @@ def test_selfplay_max_moves_argument():
 
 
 def test_benchmark_backend_argument():
-    argv = _normalize_global_options(["benchmark", "--backend", "numba", "--depth", "6", "--scenario", "midgame"])
+    argv = _normalize_global_options(["benchmark", "--backend", "numba_bitboard", "--depth", "6", "--scenario", "midgame"])
     args = build_parser().parse_args(argv)
     config = config_from_args(args)
 
-    assert config.backend == "numba"
+    assert config.backend == "numba_bitboard"
     assert config.depth == 6
     assert config.scenario == "midgame"
 
 
 def test_play_engine_argument_is_explicit_python_for_now():
-    argv = _normalize_global_options(["play", "--engine", "python"])
+    argv = _normalize_global_options(["play", "--engine", "numba_bitboard"])
     args = build_parser().parse_args(argv)
     config = config_from_args(args)
 
-    assert config.engine == "python"
+    assert config.engine == "numba_bitboard"
+
+
+def test_default_engine_is_numba_bitboard():
+    argv = _normalize_global_options(["play"])
+    args = build_parser().parse_args(argv)
+    config = config_from_args(args)
+
+    assert config.engine == "numba_bitboard"

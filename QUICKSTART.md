@@ -46,11 +46,11 @@ python main.py benchmark --help
 | `--opening-book` | `data/opening_book.json` | 默认开局库路径。 |
 | `--log-dir` | `data/game_logs` | 默认对局日志目录。 |
 | `--no-ui` | `false` | 默认开启 UI；只有显式写 `--no-ui` 才后台运行。 |
-| `--engine` | `python` | 人机和机机对局当前使用人类可读 Python 引擎。 |
+| `--engine` | `numba_bitboard` | 默认使用当前最强 4xuint64 Numba bitboard 对局引擎；Renju 黑棋会回退 Python 保证禁手合法。 |
 | `play --human` | `black` | 人机模式默认人类执黑，AI 执白。 |
 | `selfplay --games` | `1` | 机机模式默认跑 1 局。 |
 | `selfplay --max-moves` | `225` | 机机模式默认最多 225 手。 |
-| `benchmark --backend` | `python` | benchmark 默认使用人类可读 Python 后端。 |
+| `benchmark --backend` | `python` | benchmark 默认使用人类可读 Python 后端；可选 `python`、`numba`、`numba_bitboard`。 |
 | `benchmark --depth` | `5` | benchmark 默认深度参数为 5；Python 后端内部当前最多取到 3。 |
 | `benchmark --scenario` | `midgame` | benchmark 默认使用中盘压测局面。 |
 
@@ -63,7 +63,7 @@ python main.py play
 等价于：
 
 ```bash
-python main.py play --human black --rule renju --time-limit 5 --threads 24
+python main.py play --human black --rule renju --engine numba_bitboard --time-limit 5 --threads 24
 ```
 
 下面这条：
@@ -75,7 +75,7 @@ python main.py selfplay
 等价于开启可观看 UI 的机机对战：
 
 ```bash
-python main.py selfplay --games 1 --max-moves 225 --rule renju --time-limit 5 --threads 24
+python main.py selfplay --games 1 --max-moves 225 --rule renju --engine numba_bitboard --time-limit 5 --threads 24
 ```
 
 下面这条：
@@ -94,13 +94,15 @@ python main.py benchmark --backend python --rule renju --time-limit 5 --threads 
 
 参数含义：
 
-- `--engine python`：当前人机 UI 实际使用人类可读 Python 搜索引擎。
+- `--engine numba_bitboard`：默认对局引擎，当前最强，使用 4xuint64 Numba bitboard。
+- `--engine python`：人类可读 Python 搜索引擎，适合调试规则。
 - `--human black`：人类玩家执黑，AI 执白。
 - `--human white`：人类玩家执白，AI 执黑。
 - `--rule renju`：使用连珠规则，黑棋有三三、四四、长连禁手，棋盘会显示黑棋禁手红色 X。
 - `--rule freestyle`：使用自由五子棋规则，不启用 Renju 黑棋禁手。
 - 默认规则是 `renju`。也就是说，不写 `--rule` 时就是连珠规则。
-- 注意：`numba` 和 `numba_bitboard` 目前是 benchmark / 性能开发后端，还没有接入人机 UI。
+- 注意：`numba_bitboard` 已接入人机 UI / 机机对局；`numba` 矩阵版目前只用于 benchmark。
+- UI 右侧统计面板会显示 AI 最近多步思考记录，包括落点、深度、节点数、NPS、耗时、评分；鼠标滚轮可滚动。
 
 ### 人类执黑，Renju 规则
 
@@ -127,6 +129,7 @@ python main.py play --human black --rule renju --time-limit 5
 ### 显式指定当前 UI 引擎
 
 ```bash
+python main.py play --human black --rule renju --engine numba_bitboard --time-limit 5
 python main.py play --human black --rule renju --engine python --time-limit 5
 ```
 
@@ -153,7 +156,7 @@ python main.py play --human white --log-file data/game_logs/human_white.json
 
 默认不加 `--no-ui` 时，会打开 Pygame 棋盘观看 AI vs AI。加上 `--no-ui` 时，才是后台批量跑。
 
-当前机机对战实际使用 `--engine python`。Numba 后端目前只用于 benchmark，不用于真实 UI 对局。
+当前机机对战默认使用 `--engine numba_bitboard`。如果要调试规则，可以显式使用 `--engine python`。
 
 ### 可观看机机对战 UI
 
@@ -164,6 +167,7 @@ python main.py selfplay --games 1 --time-limit 1
 ### 可观看机机对战 UI，显式指定 Python 引擎
 
 ```bash
+python main.py selfplay --games 1 --engine numba_bitboard --time-limit 1
 python main.py selfplay --games 1 --engine python --time-limit 1
 ```
 
@@ -280,6 +284,38 @@ python main.py benchmark --backend numba --threads 16 --depth 5 --scenario midga
 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
+## 7.1 Numba bitboard 后端 benchmark
+
+`numba_bitboard` 是当前最高效 benchmark 后端，使用 4xuint64 bitboard 路径。它已经能实际搜索并输出 best move、nodes 和 NPS，并且也是当前默认 UI / selfplay 对局引擎。
+
+### 24 线程，中盘场景，推荐性能压测
+
+```bash
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
+```
+
+### 快速检查
+
+```bash
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 4 --scenario midgame
+```
+
+### 空棋盘检查
+
+```bash
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario empty
+```
+
+### 不同线程数对比
+
+```bash
+python main.py benchmark --backend numba_bitboard --threads 1 --depth 5 --scenario midgame
+python main.py benchmark --backend numba_bitboard --threads 4 --depth 5 --scenario midgame
+python main.py benchmark --backend numba_bitboard --threads 8 --depth 5 --scenario midgame
+python main.py benchmark --backend numba_bitboard --threads 16 --depth 5 --scenario midgame
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
+```
+
 ## 8. 测试
 
 ### 全量测试
@@ -310,6 +346,12 @@ python3 -B -m pytest -q -p no:cacheprovider tests/test_engine.py tests/test_eval
 
 ```bash
 python3 -B -m pytest -q -p no:cacheprovider tests/test_numba_search.py
+```
+
+### 单独测试 Numba bitboard
+
+```bash
+python3 -B -m pytest -q -p no:cacheprovider tests/test_numba_bitboard_search.py
 ```
 
 ### 单独测试日志和复盘加载
@@ -386,6 +428,7 @@ python scripts/benchmark_engine.py
 python3 -B -m pytest -q -p no:cacheprovider
 python main.py benchmark --backend python --time-limit 0.05
 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
 ```
 
 ### UI 对局最常用
@@ -444,7 +487,11 @@ JSON 文件使用 `indent=2`，便于人工阅读和复盘调试。
 
 - `backend=python` 是人类可读版，适合调试。
 - `backend=numba` 是性能压测版，适合看 NPS 和 CPU 利用率。
-- 当前 Numba 后端还是矩阵版，不是最终 4xuint64 bitboard 版。
+- `backend=numba_bitboard` 是当前最高效 benchmark 版，使用 4xuint64 bitboard。
+- `engine=numba_bitboard` 是当前默认 UI / selfplay 对局引擎。
+- `engine=python` 是规则调试用对局引擎。
+- `backend=numba` 是矩阵 benchmark 后端，不接入 UI 对局。
+- UI 右侧会显示 AI 计算统计，鼠标滚轮可滚动查看历史记录。
 - 高质量开局库还需要继续补。
 - Renju 禁手规则还需要继续用标准局面打磨。
 - 完整递归 VCF/VCT 还需要继续增强。
@@ -457,22 +504,22 @@ JSON 文件使用 `indent=2`，便于人工阅读和复盘调试。
 
 ```bash
 # 人类执黑，AI 执白，Renju 规则
-python main.py play --human black --rule renju --engine python
+python main.py play --human black --rule renju --engine numba_bitboard
 
 # 人类执白，AI 执黑，Renju 规则
-python main.py play --human white --rule renju --engine python
+python main.py play --human white --rule renju --engine numba_bitboard
 
 # 人类执黑，AI 最多思考 1 秒
-python main.py play --human black --rule renju --engine python --time-limit 1
+python main.py play --human black --rule renju --engine numba_bitboard --time-limit 1
 
 # 人类执黑，AI 最多思考 5 秒
-python main.py play --human black --rule renju --engine python --time-limit 5
+python main.py play --human black --rule renju --engine numba_bitboard --time-limit 5
 
 # 人类执白，AI 最多思考 1 秒
-python main.py play --human white --rule renju --engine python --time-limit 1
+python main.py play --human white --rule renju --engine numba_bitboard --time-limit 1
 
 # 人类执白，AI 最多思考 5 秒
-python main.py play --human white --rule renju --engine python --time-limit 5
+python main.py play --human white --rule renju --engine numba_bitboard --time-limit 5
 
 # 人类执黑，指定日志文件
 python main.py play --human black --rule renju --time-limit 5 --log-file data/game_logs/human_black_renju.json
@@ -507,10 +554,10 @@ python main.py play --human white --rule freestyle --time-limit 5 --log-file dat
 
 ```bash
 # 观看一局 Renju 机机对战
-python main.py selfplay --games 1 --rule renju --engine python --time-limit 1
+python main.py selfplay --games 1 --rule renju --engine numba_bitboard --time-limit 1
 
 # 观看一局自由五子棋机机对战
-python main.py selfplay --games 1 --rule freestyle --engine python --time-limit 1
+python main.py selfplay --games 1 --rule freestyle --engine numba_bitboard --time-limit 1
 
 # 观看一局 Renju 机机对战，最多 80 手
 python main.py selfplay --games 1 --rule renju --max-moves 80 --time-limit 1
@@ -635,6 +682,25 @@ python main.py benchmark --backend numba --threads 24 --depth 6 --scenario midga
 NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
+### 14.8.1 Numba bitboard benchmark：最高效后端组合
+
+```bash
+# 4xuint64 bitboard，单线程
+python main.py benchmark --backend numba_bitboard --threads 1 --depth 5 --scenario midgame
+
+# 4xuint64 bitboard，8 线程
+python main.py benchmark --backend numba_bitboard --threads 8 --depth 5 --scenario midgame
+
+# 4xuint64 bitboard，24 线程，推荐性能压测
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
+
+# 4xuint64 bitboard，快速检查
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 4 --scenario midgame
+
+# 4xuint64 bitboard，空棋盘检查
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario empty
+```
+
 ### 14.9 测试命令组合
 
 ```bash
@@ -655,6 +721,9 @@ python3 -B -m pytest -q -p no:cacheprovider tests/test_engine.py tests/test_eval
 
 # Numba 测试
 python3 -B -m pytest -q -p no:cacheprovider tests/test_numba_search.py
+
+# Numba bitboard 测试
+python3 -B -m pytest -q -p no:cacheprovider tests/test_numba_bitboard_search.py
 
 # 开局库测试
 python3 -B -m pytest -q -p no:cacheprovider tests/test_opening_book.py tests/test_symmetry.py

@@ -27,6 +27,8 @@
 python main.py benchmark --backend python --time-limit 0.05
 python main.py play --human black --engine python
 python main.py selfplay --games 1 --engine python
+python main.py play --human black --engine numba_bitboard
+python main.py selfplay --games 1 --engine numba_bitboard
 ```
 
 ## 2. `numba`
@@ -76,7 +78,7 @@ Numba bitboard 极限版。
 - 不直接替代 Python 可读版。
 - 必须通过测试和 benchmark 逐步接入。
 
-目标命令：
+命令：
 
 ```bash
 python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
@@ -84,9 +86,9 @@ python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scena
 
 限制：
 
-- 当前只有 smoke 骨架。
-- 尚未接入 CLI benchmark 后端。
-- 尚未接入 UI 对局。
+- 当前已经接入 CLI benchmark 后端。
+- 已接入 `play` / `selfplay` 的 `--engine numba_bitboard`。
+- Renju 黑棋会回退 Python 引擎保证禁手合法性。
 
 ## 原则
 

@@ -2,14 +2,15 @@
 
 CPU-only 五子棋 / 连珠 AI 项目。
 
-目标是构建一个不依赖 CNN、不使用 MPS、不跑 PyTorch 主模型推理的本地五子棋 AI。当前项目保留两条搜索路径：
+目标是构建一个不依赖 CNN、不使用 MPS、不跑 PyTorch 主模型推理的本地五子棋 AI。当前项目保留三条搜索路径：
 
 - `python` 后端：人类可读版，方便调试规则、UI、日志、复盘和搜索逻辑。
-- `numba` 后端：高性能 CPU benchmark 路径，使用 Numba JIT 和根节点并行，后续继续压到 4xuint64 bitboard。
+- `numba` 后端：高性能 CPU benchmark 路径，使用 Numba JIT 和矩阵棋盘根节点并行。
+- `numba_bitboard` 后端：当前最高效 benchmark 和默认 UI 对局路径，使用 4xuint64 bitboard。
 
 当前状态：已经具备可运行 MVP，包括 Pygame 人机模式、机机自博弈、JSON 复盘日志、复盘 UI、基础 Renju 禁手可视化接口、基础 Alpha-Beta 搜索、棋形评估、即时成五/防五、基础 VCF/双威胁检测，以及 Numba 并行 benchmark。
 
-注意：当前人机 UI 和机机自博弈实际使用 `--engine python`，也就是人类可读搜索引擎。`--backend numba` 目前只用于 benchmark / 性能压测，还没有接入真实 UI 对局。
+注意：当前人机 UI 和机机自博弈默认使用 `--engine numba_bitboard`，也就是 4xuint64 Numba bitboard 对局引擎。`--engine python` 仍保留用于规则调试。`--backend numba` 和 `--backend numba_bitboard` 是 benchmark 参数，不要和 UI 的 `--engine` 混淆。
 
 ## Quickstart
 
@@ -49,6 +50,7 @@ python main.py play --human black
 
 ```bash
 python main.py play --human black --engine python
+python main.py play --human black --engine numba_bitboard
 ```
 
 人类执白：
@@ -73,6 +75,7 @@ python main.py play --human black --log-file data/game_logs/manual_game.json
 
 - Pygame 主线程负责 UI。
 - AI 在后台线程思考。
+- UI 右侧显示 AI 思考统计，包括落点、深度、节点数、NPS、耗时、评分。
 - 黑棋禁手点会通过红色 X 覆盖层显示。
 - 人机模式支持悔棋一步。
 - 日志保存为普通 JSON，使用 `indent=2`。
@@ -152,6 +155,12 @@ NUMBA_NUM_THREADS=24 python main.py benchmark --backend numba --threads 24 --dep
 ```
 
 当前 Numba benchmark 会先 warmup 一次 JIT 编译，再正式计时。它的目的不是替代人类可读搜索，而是验证 CPU 并行路径、线程数和 NPS。
+
+4xuint64 bitboard 后端：
+
+```bash
+python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
+```
 
 可选场景：
 
@@ -237,13 +246,14 @@ docker run --rm gomoku-terminator python main.py benchmark --backend python
 - 即时成五 / 防五。
 - 基础 VCF / 双威胁检测。
 - Numba 根节点并行 benchmark。
+- Numba bitboard benchmark。
 
 仍需继续强化：
 
 - 高质量 Renju 开局库。
 - 职业级三三 / 四四 / 长连禁手判定。
 - 完整递归 VCF / VCT。
-- Numba 搜索从矩阵版压到 4xuint64 bitboard。
+- 完善 Numba bitboard 的 Renju 黑棋禁手高速过滤，减少回退 Python 的情况。
 - 置换表。
 - 更强 move ordering。
 - UI 实机细节打磨。

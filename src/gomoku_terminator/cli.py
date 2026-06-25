@@ -19,7 +19,7 @@ class RuntimeConfig:
     log_dir: str
     log_file: str | None
     no_ui: bool
-    engine: str = "python"
+    engine: str = "numba_bitboard"
     human: str | None = None
     games: int = 1
     max_moves: int = 225
@@ -47,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log-dir", default="data/game_logs")
     parser.add_argument("--log-file")
     parser.add_argument("--no-ui", action="store_true")
-    parser.add_argument("--engine", choices=("python",), default="python")
+    parser.add_argument("--engine", choices=("python", "numba_bitboard"), default="numba_bitboard")
 
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
@@ -63,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     benchmark = subparsers.add_parser("benchmark", help="run engine benchmark")
     benchmark.add_argument("--position")
-    benchmark.add_argument("--backend", choices=("python", "numba"), default="python")
+    benchmark.add_argument("--backend", choices=("python", "numba", "numba_bitboard"), default="python")
     benchmark.add_argument("--depth", type=int, default=5)
     benchmark.add_argument("--scenario", choices=("empty", "midgame"), default="midgame")
 

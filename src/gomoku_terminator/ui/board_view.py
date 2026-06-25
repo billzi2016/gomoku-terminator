@@ -30,11 +30,17 @@ def get_board_coords(mouse_pos: tuple[int, int]) -> tuple[int, int] | None:
     return None
 
 
-def draw_board(screen, state: BitboardState, rule: str = "renju") -> None:
+def draw_board(
+    screen,
+    state: BitboardState,
+    rule: str = "renju",
+    forbidden_cache: list[tuple[int, int]] | None = None,
+) -> None:
     """绘制棋盘、棋子和黑棋禁手红色 X。
 
     这个函数只负责可视化，不决定规则真假。红色 X 的数据来自
     `rules/renju_forbidden.py`，保证人机、机机和复盘看到的是同一套禁手结果。
+    UI 实战中会传入缓存，避免每一帧都全盘重算禁手导致鼠标点击后卡顿。
     """
     import pygame
 
@@ -67,7 +73,8 @@ def draw_board(screen, state: BitboardState, rule: str = "renju") -> None:
                 pygame.draw.circle(screen, COLOR_WHITE, _pixel(row, col), GRID_SIZE // 2 - 2)
                 pygame.draw.circle(screen, COLOR_WHITE_EDGE, _pixel(row, col), GRID_SIZE // 2 - 2, 1)
 
-    for row, col in current_forbidden_points(state, rule):
+    forbidden_points = current_forbidden_points(state, rule) if forbidden_cache is None else forbidden_cache
+    for row, col in forbidden_points:
         x, y = _pixel(row, col)
         delta = GRID_SIZE // 4
         pygame.draw.line(screen, COLOR_FORBIDDEN, (x - delta, y - delta), (x + delta, y + delta), 3)
