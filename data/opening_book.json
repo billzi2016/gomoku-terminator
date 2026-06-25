@@ -1,0 +1,14 @@
+{
+  "book_version": "0.1.0",
+  "board_size": 15,
+  "rule": "renju",
+  "coordinate": "row_col_zero_based",
+  "sources": [
+    {
+      "name": "RenjuNet standard openings",
+      "url": "https://www.renju.net/study/openings.php",
+      "trust": "reference"
+    }
+  ],
+  "entries": []
+}
