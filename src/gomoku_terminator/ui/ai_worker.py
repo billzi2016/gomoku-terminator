@@ -7,6 +7,7 @@ from typing import Any
 from gomoku_terminator.board.bitboard import BLACK, BitboardState
 from gomoku_terminator.engine.negamax import SearchResult, search_best_move
 from gomoku_terminator.engine.numba_bitboard_search import bitboard_backend_available, search_bitboard_arrays
+from gomoku_terminator.engine.tactics import double_threat_move, immediate_block_move, immediate_win_move
 from gomoku_terminator.opening.book import OpeningBook
 from gomoku_terminator.rules.renju_forbidden import is_forbidden_move
 
@@ -86,6 +87,10 @@ def _search_with_engine(
     if opening is not None:
         return opening
 
+    tactical = _lookup_tactical_move(state, color, rule, depth)
+    if tactical is not None:
+        return tactical
+
     if engine == "numba_bitboard" and bitboard_backend_available():
         if not (rule == "renju" and color == BLACK):
             result = search_bitboard_arrays(state.black, state.white, color, depth, threads)
@@ -95,6 +100,28 @@ def _search_with_engine(
                     if not (rule == "renju" and color == BLACK and is_forbidden_move(state, result.row, result.col)):
                         return SearchResult(result.row, result.col, result.score, result.depth, result.nodes)
     return search_best_move(state, color, depth, time_limit, rule)
+
+
+def _lookup_tactical_move(state: BitboardState, color: int, rule: str, depth: int) -> SearchResult | None:
+    """搜索前的强制战术检查。
+
+    高速 bitboard 搜索目前还不够懂“必须走”的战术点。先处理一步胜、一步必防
+    和双威胁，可以显著减少浅搜送死。
+    """
+
+    win_move = immediate_win_move(state, color, rule)
+    if win_move is not None:
+        return SearchResult(win_move[0], win_move[1], 1_000_000_000, depth, 1)
+
+    block_move = immediate_block_move(state, color, rule)
+    if block_move is not None:
+        return SearchResult(block_move[0], block_move[1], 500_000, depth, 1)
+
+    threat_move = double_threat_move(state, color, rule)
+    if threat_move is not None:
+        return SearchResult(threat_move[0], threat_move[1], 300_000, depth, 1)
+
+    return None
 
 
 def _lookup_opening_move(

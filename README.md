@@ -14,6 +14,8 @@ CPU-only 五子棋 / 连珠 AI 项目。
 
 开局库：`data/opening_book.json` 已经包含 Renju 26 个标准开局形和保守前几手推荐，并支持加载时 8 向对称扩展。来源、重建命令和当前边界写在 [data/README.md](/Users/bizi/Desktop/GitHub/gomoku-terminator/data/README.md)。注意它还不是完整职业深度定式库，后续深库必须从许可证清楚的 SGF/RenLib 数据源导入。
 
+棋力说明：UI/selfplay 默认 `--ai-depth 4`；`--time-limit` 和 `--ai-depth` 没有 CLI 硬上限，只做最小值保护。最终测试建议用 `--ai-depth 10 --time-limit 10 --threads 24`。`numba_bitboard` 在进入深搜前会先做即时胜、即时防守和双威胁检查，减少浅搜漏杀。当前还不是职业强度，后续仍要做迭代加深、VCF/VCT 和更完整的 Renju 高速禁手过滤。
+
 ## Quickstart
 
 ### 1. 创建环境
@@ -67,6 +69,19 @@ python main.py play --human white
 python main.py play --human black --rule renju --time-limit 5
 ```
 
+提高实战强度：
+
+```bash
+python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
+```
+
+最终测试强度：
+
+```bash
+python main.py play --human black --rule freestyle --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+python main.py selfplay --games 1 --rule freestyle --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+```
+
 指定日志文件：
 
 ```bash
@@ -77,7 +92,7 @@ python main.py play --human black --log-file data/game_logs/manual_game.json
 
 - Pygame 主线程负责 UI。
 - AI 在后台线程思考。
-- UI 右侧显示 AI 思考统计，包括落点、深度、节点数、NPS、耗时、评分。
+- UI 右侧显示紧凑 AI 统计表，包括来源、落点、深度、节点数、NPS、耗时、评分和最近一手详情。
 - 黑棋禁手点会通过红色 X 覆盖层显示。
 - 人机模式支持悔棋一步。
 - 日志保存为普通 JSON，使用 `indent=2`。
@@ -250,12 +265,15 @@ docker run --rm gomoku-terminator python main.py benchmark --backend python
 - Numba 根节点并行 benchmark。
 - Numba bitboard benchmark。
 - Renju 26 标准开局形 JSON 库。
+- UI/selfplay `--ai-depth` 参数。
+- 搜索前即时胜、必防和双威胁检查。
 
 仍需继续强化：
 
 - 高质量 Renju 深度开局库，也就是 4/5/6 手以后带来源和评分的职业变化。
 - 职业级三三 / 四四 / 长连禁手判定。
 - 完整递归 VCF / VCT。
+- 迭代加深和更严格时间控制。
 - 完善 Numba bitboard 的 Renju 黑棋禁手高速过滤，减少回退 Python 的情况。
 - 置换表。
 - 更强 move ordering。

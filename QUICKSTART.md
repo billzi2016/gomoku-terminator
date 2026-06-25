@@ -46,6 +46,7 @@ python main.py benchmark --help
 | `--opening-book` | `data/opening_book.json` | 默认开局库路径。 |
 | `--log-dir` | `data/game_logs` | 默认对局日志目录。 |
 | `--no-ui` | `false` | 默认开启 UI；只有显式写 `--no-ui` 才后台运行。 |
+| `--ai-depth` | `4` | UI / selfplay 默认搜索深度。CLI 不设硬上限，越高越慢。 |
 | `--engine` | `numba_bitboard` | 默认使用当前最强 4xuint64 Numba bitboard 对局引擎；Renju 黑棋会回退 Python 保证禁手合法。 |
 | `play --human` | `black` | 人机模式默认人类执黑，AI 执白。 |
 | `selfplay --games` | `1` | 机机模式默认跑 1 局。 |
@@ -63,7 +64,7 @@ python main.py play
 等价于：
 
 ```bash
-python main.py play --human black --rule renju --engine numba_bitboard --time-limit 5 --threads 24
+python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 4 --time-limit 5 --threads 24
 ```
 
 下面这条：
@@ -75,7 +76,7 @@ python main.py selfplay
 等价于开启可观看 UI 的机机对战：
 
 ```bash
-python main.py selfplay --games 1 --max-moves 225 --rule renju --engine numba_bitboard --time-limit 5 --threads 24
+python main.py selfplay --games 1 --max-moves 225 --rule renju --engine numba_bitboard --ai-depth 4 --time-limit 5 --threads 24
 ```
 
 下面这条：
@@ -96,13 +97,15 @@ python main.py benchmark --backend python --rule renju --time-limit 5 --threads 
 
 - `--engine numba_bitboard`：默认对局引擎，当前最强，使用 4xuint64 Numba bitboard。
 - `--engine python`：人类可读 Python 搜索引擎，适合调试规则。
+- `--ai-depth 4`：默认实战深度。建议日常 4 到 6，最终测试用 10；CLI 不设硬上限。
 - `--human black`：人类玩家执黑，AI 执白。
 - `--human white`：人类玩家执白，AI 执黑。
 - `--rule renju`：使用连珠规则，黑棋有三三、四四、长连禁手，棋盘会显示黑棋禁手红色 X。
 - `--rule freestyle`：使用自由五子棋规则，不启用 Renju 黑棋禁手。
 - 默认规则是 `renju`。也就是说，不写 `--rule` 时就是连珠规则。
 - 注意：`numba_bitboard` 已接入人机 UI / 机机对局；`numba` 矩阵版目前只用于 benchmark。
-- UI 右侧统计面板会显示 AI 最近多步思考记录，包括落点、深度、节点数、NPS、耗时、评分；鼠标滚轮可滚动。
+- `numba_bitboard` 在进入深搜前会先做即时胜、即时防守和双威胁检查，避免浅搜漏掉强制手。
+- UI 右侧统计面板会显示紧凑表格和最近一手详情，包括来源、落点、深度、节点数、NPS、耗时、评分；鼠标滚轮可滚动。
 - 默认会先查 `data/opening_book.json`。命中开局库时直接落子，`nodes=0`，不会消耗搜索时间。
 - 开局库磁盘文件只保存 canonical 条目，加载时自动展开 8 向旋转、镜像和对角线变换。详细说明见 `data/README.md`。
 
@@ -126,6 +129,24 @@ python main.py play --human white --rule renju
 
 ```bash
 python main.py play --human black --rule renju --time-limit 5
+```
+
+### 人类执黑，提高搜索深度
+
+```bash
+python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
+```
+
+### 人类执白，提高搜索深度
+
+```bash
+python main.py play --human white --rule renju --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
+```
+
+### 最终测试强度，可能明显变慢
+
+```bash
+python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
 ```
 
 ### 显式指定当前 UI 引擎
@@ -164,6 +185,12 @@ python main.py play --human white --log-file data/game_logs/human_white.json
 
 ```bash
 python main.py selfplay --games 1 --time-limit 1
+```
+
+### 可观看机机对战 UI，提高深度
+
+```bash
+python main.py selfplay --games 1 --engine numba_bitboard --ai-depth 6 --time-limit 5
 ```
 
 ### 可观看机机对战 UI，显式指定 Python 引擎
@@ -495,6 +522,8 @@ JSON 文件使用 `indent=2`，便于人工阅读和复盘调试。
 - `engine=numba_bitboard` 是当前默认 UI / selfplay 对局引擎。
 - `engine=python` 是规则调试用对局引擎。
 - `backend=numba` 是矩阵 benchmark 后端，不接入 UI 对局。
+- `--ai-depth` 只影响 UI / selfplay，不影响 benchmark；benchmark 使用 `--depth`。
+- 默认实战深度是 `--ai-depth 4`，推荐强度测试使用 `--ai-depth 6 --time-limit 5 --threads 24`。
 - UI 右侧会显示 AI 计算统计，鼠标滚轮可滚动查看历史记录。
 - 高质量开局库还需要继续补。
 - Renju 禁手规则还需要继续用标准局面打磨。
@@ -519,11 +548,23 @@ python main.py play --human black --rule renju --engine numba_bitboard --time-li
 # 人类执黑，AI 最多思考 5 秒
 python main.py play --human black --rule renju --engine numba_bitboard --time-limit 5
 
+# 人类执黑，推荐强度：深度 6，最多 5 秒，24 线程
+python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
+
+# 人类执黑，最终测试：深度 10，最多 10 秒，24 线程
+python main.py play --human black --rule renju --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+
 # 人类执白，AI 最多思考 1 秒
 python main.py play --human white --rule renju --engine numba_bitboard --time-limit 1
 
 # 人类执白，AI 最多思考 5 秒
 python main.py play --human white --rule renju --engine numba_bitboard --time-limit 5
+
+# 人类执白，推荐强度：深度 6，最多 5 秒，24 线程
+python main.py play --human white --rule renju --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
+
+# 人类执白，最终测试：深度 10，最多 10 秒，24 线程
+python main.py play --human white --rule renju --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
 
 # 人类执黑，指定日志文件
 python main.py play --human black --rule renju --time-limit 5 --log-file data/game_logs/human_black_renju.json
@@ -544,8 +585,20 @@ python main.py play --human white --rule freestyle
 # 人类执黑，自由五子棋，AI 最多思考 5 秒
 python main.py play --human black --rule freestyle --time-limit 5
 
+# 人类执黑，自由五子棋，推荐强度
+python main.py play --human black --rule freestyle --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
+
+# 人类执黑，自由五子棋，最终测试
+python main.py play --human black --rule freestyle --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+
 # 人类执白，自由五子棋，AI 最多思考 5 秒
 python main.py play --human white --rule freestyle --time-limit 5
+
+# 人类执白，自由五子棋，推荐强度
+python main.py play --human white --rule freestyle --engine numba_bitboard --ai-depth 6 --time-limit 5 --threads 24
+
+# 人类执白，自由五子棋，最终测试
+python main.py play --human white --rule freestyle --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
 
 # 人类执黑，自由五子棋，指定日志文件
 python main.py play --human black --rule freestyle --time-limit 5 --log-file data/game_logs/human_black_freestyle.json
@@ -560,8 +613,14 @@ python main.py play --human white --rule freestyle --time-limit 5 --log-file dat
 # 观看一局 Renju 机机对战
 python main.py selfplay --games 1 --rule renju --engine numba_bitboard --time-limit 1
 
+# 观看一局 Renju 机机对战，最终测试
+python main.py selfplay --games 1 --rule renju --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+
 # 观看一局自由五子棋机机对战
 python main.py selfplay --games 1 --rule freestyle --engine numba_bitboard --time-limit 1
+
+# 观看一局自由五子棋机机对战，最终测试
+python main.py selfplay --games 1 --rule freestyle --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
 
 # 观看一局 Renju 机机对战，最多 80 手
 python main.py selfplay --games 1 --rule renju --max-moves 80 --time-limit 1

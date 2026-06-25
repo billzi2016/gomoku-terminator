@@ -11,12 +11,20 @@ def test_global_options_can_appear_after_subcommand():
     assert config.threads == 4
 
 
-def test_time_limit_is_capped_at_5_seconds():
+def test_time_limit_has_no_upper_cap():
     argv = _normalize_global_options(["benchmark", "--time-limit", "99"])
     args = build_parser().parse_args(argv)
     config = config_from_args(args)
 
-    assert config.time_limit == 5.0
+    assert config.time_limit == 99.0
+
+
+def test_time_limit_has_minimum_guard():
+    argv = _normalize_global_options(["benchmark", "--time-limit", "0"])
+    args = build_parser().parse_args(argv)
+    config = config_from_args(args)
+
+    assert config.time_limit == 0.001
 
 
 def test_selfplay_max_moves_argument():
@@ -52,3 +60,27 @@ def test_default_engine_is_numba_bitboard():
     config = config_from_args(args)
 
     assert config.engine == "numba_bitboard"
+
+
+def test_ai_depth_argument_can_appear_after_subcommand():
+    argv = _normalize_global_options(["play", "--ai-depth", "6"])
+    args = build_parser().parse_args(argv)
+    config = config_from_args(args)
+
+    assert config.ai_depth == 6
+
+
+def test_ai_depth_has_no_upper_cap():
+    argv = _normalize_global_options(["play", "--ai-depth", "99"])
+    args = build_parser().parse_args(argv)
+    config = config_from_args(args)
+
+    assert config.ai_depth == 99
+
+
+def test_ai_depth_has_minimum_guard():
+    argv = _normalize_global_options(["play", "--ai-depth", "0"])
+    args = build_parser().parse_args(argv)
+    config = config_from_args(args)
+
+    assert config.ai_depth == 1

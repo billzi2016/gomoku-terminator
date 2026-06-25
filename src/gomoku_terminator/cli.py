@@ -19,6 +19,7 @@ class RuntimeConfig:
     log_dir: str
     log_file: str | None
     no_ui: bool
+    ai_depth: int = 4
     engine: str = "numba_bitboard"
     human: str | None = None
     games: int = 1
@@ -47,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log-dir", default="data/game_logs")
     parser.add_argument("--log-file")
     parser.add_argument("--no-ui", action="store_true")
+    parser.add_argument("--ai-depth", type=int, default=4)
     parser.add_argument("--engine", choices=("python", "numba_bitboard"), default="numba_bitboard")
 
     subparsers = parser.add_subparsers(dest="mode", required=True)
@@ -72,7 +74,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
     """把 argparse Namespace 转换成稳定的 RuntimeConfig。"""
-    time_limit = max(0.001, min(float(args.time_limit), 5.0))
+    time_limit = max(0.001, float(args.time_limit))
+    ai_depth = max(1, int(args.ai_depth))
     return RuntimeConfig(
         mode=args.mode,
         rule=args.rule,
@@ -82,6 +85,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         log_dir=args.log_dir,
         log_file=args.log_file,
         no_ui=args.no_ui,
+        ai_depth=ai_depth,
         engine=args.engine,
         human=getattr(args, "human", None),
         games=getattr(args, "games", 1),
@@ -149,6 +153,7 @@ def _normalize_global_options(argv: list[str] | None) -> list[str] | None:
         "--opening-book",
         "--log-dir",
         "--log-file",
+        "--ai-depth",
         "--engine",
     }
     flag_options = {"--no-ui"}

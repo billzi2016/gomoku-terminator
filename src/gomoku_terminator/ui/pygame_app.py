@@ -18,7 +18,8 @@ PANEL_HEIGHT = 88
 STATS_WIDTH = 320
 BUTTON_HEIGHT = 34
 BUTTON_WIDTH = 96
-AI_DEPTH = 2
+STATS_ROW_HEIGHT = 30
+STATS_DETAIL_HEIGHT = 126
 
 
 def _opponent(color: int) -> int:
@@ -74,7 +75,7 @@ def run_play_mode(config) -> int:
             worker.start(
                 session.state,
                 ai_color,
-                AI_DEPTH,
+                config.ai_depth,
                 config.time_limit,
                 config.rule,
                 config.engine,
@@ -104,7 +105,19 @@ def run_play_mode(config) -> int:
                         elapsed_ms,
                         _engine_log_name(config.engine, result.nodes),
                     )
-                    stats.append(_stats_record(move.color, move.row, move.col, result.depth, result.nodes, result.score, elapsed_ms))
+                    stats.append(
+                        _stats_record(
+                            len(session.moves),
+                            move.color,
+                            move.row,
+                            move.col,
+                            result.depth,
+                            result.nodes,
+                            result.score,
+                            elapsed_ms,
+                            _engine_log_name(config.engine, result.nodes),
+                        )
+                    )
                     forbidden_worker.submit(session.state, config.rule)
                     status = _status_after_move(session, human_color)
                 except ValueError as exc:
@@ -182,7 +195,7 @@ def run_selfplay_mode(config) -> int:
             result = _search_with_engine(
                 session.state.copy(),
                 color,
-                AI_DEPTH,
+                config.ai_depth,
                 config.time_limit,
                 config.rule,
                 config.engine,
@@ -258,7 +271,7 @@ def _run_selfplay_ui(config) -> int:
             worker.start(
                 session.state,
                 color,
-                AI_DEPTH,
+                config.ai_depth,
                 config.time_limit,
                 config.rule,
                 config.engine,
@@ -289,7 +302,19 @@ def _run_selfplay_ui(config) -> int:
                         elapsed_ms,
                         _engine_log_name(config.engine, result.nodes),
                     )
-                    stats.append(_stats_record(move.color, move.row, move.col, result.depth, result.nodes, result.score, elapsed_ms))
+                    stats.append(
+                        _stats_record(
+                            len(session.moves),
+                            move.color,
+                            move.row,
+                            move.col,
+                            result.depth,
+                            result.nodes,
+                            result.score,
+                            elapsed_ms,
+                            _engine_log_name(config.engine, result.nodes),
+                        )
+                    )
                     forbidden_worker.submit(session.state, config.rule)
                     status = f"{color_name(move.color)} -> ({move.row}, {move.col})"
                 except ValueError as exc:
@@ -350,11 +375,22 @@ def _draw_button(screen, font, rect, label: str, pygame) -> None:
     screen.blit(text, text.get_rect(center=rect.center))
 
 
-def _stats_record(color: int, row: int, col: int, depth: int, nodes: int, score: int, elapsed_ms: float) -> dict:
+def _stats_record(
+    move_number: int,
+    color: int,
+    row: int,
+    col: int,
+    depth: int,
+    nodes: int,
+    score: int,
+    elapsed_ms: float,
+    engine: str,
+) -> dict:
     """创建右侧统计面板的一条记录。"""
 
     nps = 0.0 if elapsed_ms <= 0 else nodes / (elapsed_ms / 1000)
     return {
+        "move_number": move_number,
         "player": color_name(color),
         "row": row,
         "col": col,
@@ -363,6 +399,8 @@ def _stats_record(color: int, row: int, col: int, depth: int, nodes: int, score:
         "nps": nps,
         "score": score,
         "time_ms": elapsed_ms,
+        "engine": engine,
+        "source": "book" if engine.startswith("opening_book:") else "search",
     }
 
 
@@ -373,32 +411,168 @@ def _draw_stats_panel(screen, font, stats: list[dict], scroll: int, pygame) -> N
     height = SCREEN_SIZE + PANEL_HEIGHT
     pygame.draw.rect(screen, (31, 34, 38), pygame.Rect(x, 0, STATS_WIDTH, height))
     pygame.draw.line(screen, (82, 82, 82), (x, 0), (x, height), 1)
-    screen.blit(font.render("AI Stats", True, (245, 245, 245)), (x + 16, 18))
-    screen.blit(font.render("wheel: scroll", True, (170, 170, 170)), (x + 16, 44))
+    screen.blit(font.render("AI Stats", True, (245, 245, 245)), (x + 14, 12))
+    summary = f"{len(stats)} AI moves  |  wheel scroll"
+    screen.blit(font.render(summary, True, (166, 170, 176)), (x + 14, 40))
+    pygame.draw.line(screen, (65, 70, 78), (x + 12, 66), (x + STATS_WIDTH - 12, 66), 1)
 
+    _draw_stats_header(screen, font, x + 10, 74, pygame)
+    visible_count = _visible_stats_count()
     end = max(0, len(stats) - scroll)
-    start = max(0, end - 12)
-    y = 78
+    start = max(0, end - visible_count)
+    y = 98
     for record in stats[start:end]:
-        pygame.draw.rect(screen, (42, 46, 52), pygame.Rect(x + 12, y - 6, STATS_WIDTH - 24, 82), border_radius=4)
-        lines = (
-            f"{record['player']} -> ({record['row']},{record['col']})",
-            f"d={record['depth']} nodes={record['nodes']}",
-            f"nps={record['nps']:.0f} t={record['time_ms']:.1f}ms",
-            f"score={record['score']}",
-        )
-        for line in lines:
-            screen.blit(font.render(line, True, (230, 230, 230)), (x + 20, y))
-            y += 18
-        y += 12
+        _draw_stats_row(screen, font, record, x + 10, y, STATS_WIDTH - 20, STATS_ROW_HEIGHT - 2, pygame)
+        y += STATS_ROW_HEIGHT
+
+    detail_y = height - STATS_DETAIL_HEIGHT - 12
+    pygame.draw.line(screen, (65, 70, 78), (x + 12, detail_y - 10), (x + STATS_WIDTH - 12, detail_y - 10), 1)
+    if stats:
+        selected = stats[max(0, min(len(stats) - 1, len(stats) - 1 - scroll))]
+        _draw_stats_detail(screen, font, selected, x + 10, detail_y, STATS_WIDTH - 20, STATS_DETAIL_HEIGHT, pygame)
+
+
+def _draw_stats_header(screen, font, x: int, y: int, pygame) -> None:
+    """绘制统计表头。"""
+
+    labels = (("#", 0), ("side", 36), ("src", 82), ("pos", 124), ("d", 176), ("nodes", 204), ("score", 254))
+    for label, offset in labels:
+        screen.blit(font.render(label, True, (132, 138, 146)), (x + offset, y))
+
+
+def _draw_stats_row(screen, font, record: dict, x: int, y: int, width: int, height: int, pygame) -> None:
+    """绘制一行紧凑统计记录。"""
+
+    source = record.get("source", "search")
+    score = int(record["score"])
+    accent = _score_color(score, source)
+    row_color = (38, 42, 48) if record["move_number"] % 4 else (44, 48, 55)
+    pygame.draw.rect(screen, row_color, pygame.Rect(x, y, width, height), border_radius=3)
+    pygame.draw.rect(screen, accent, pygame.Rect(x, y, 3, height), border_radius=2)
+
+    values = (
+        (f"#{record['move_number']}", 8, (236, 238, 241)),
+        (_short_player(record["player"]), 40, (236, 238, 241)),
+        ("book" if source == "book" else "ai", 84, accent),
+        (f"{record['row']},{record['col']}", 124, (236, 238, 241)),
+        (str(record["depth"]), 180, (236, 238, 241)),
+        (_compact_number(record["nodes"]), 204, (236, 238, 241)),
+        (_compact_score(score), 254, _score_text_color(score)),
+    )
+    for value, offset, color in values:
+        screen.blit(font.render(value, True, color), (x + offset, y + 5))
+
+
+def _draw_stats_detail(screen, font, record: dict, x: int, y: int, width: int, height: int, pygame) -> None:
+    """绘制当前选中统计记录的详情。"""
+
+    source = record.get("source", "search")
+    score = int(record["score"])
+    accent = _score_color(score, source)
+    card_color = (43, 47, 54) if source == "search" else (39, 52, 48)
+    pygame.draw.rect(screen, card_color, pygame.Rect(x, y, width, height), border_radius=4)
+    pygame.draw.rect(screen, accent, pygame.Rect(x, y, 4, height), border_radius=2)
+
+    header = f"#{record['move_number']} {record['player']}  ({record['row']}, {record['col']})"
+    screen.blit(font.render(header, True, (244, 246, 248)), (x + 12, y + 8))
+
+    tag_rect = pygame.Rect(x + width - 72, y + 8, 58, 20)
+    pygame.draw.rect(screen, accent, tag_rect, border_radius=3)
+    tag_text = "BOOK" if source == "book" else "AI"
+    tag_surface = font.render(tag_text, True, (20, 24, 28))
+    screen.blit(tag_surface, tag_surface.get_rect(center=tag_rect.center))
+
+    left = x + 12
+    right = x + width // 2 + 6
+    row1 = y + 34
+    row2 = y + 56
+    _draw_metric(screen, font, "depth", str(record["depth"]), left, row1)
+    _draw_metric(screen, font, "nodes", _compact_number(record["nodes"]), right, row1)
+    _draw_metric(screen, font, "nps", _compact_number(record["nps"]), left, row2)
+    _draw_metric(screen, font, "time", _format_ms(record["time_ms"]), right, row2)
+
+    score_text = f"score {_compact_score(score)}"
+    score_color = _score_text_color(score)
+    screen.blit(font.render(score_text, True, score_color), (left, y + 76))
+
+
+def _draw_metric(screen, font, label: str, value: str, x: int, y: int) -> None:
+    """绘制一个短指标，避免多行文本挤成一团。"""
+
+    screen.blit(font.render(label, True, (150, 156, 164)), (x, y))
+    screen.blit(font.render(value, True, (232, 235, 238)), (x + 58, y))
 
 
 def _scroll_stats(current: int, wheel_y: int, total: int) -> int:
     """根据鼠标滚轮更新右侧统计面板滚动位置。"""
 
-    max_scroll = max(0, total - 12)
+    max_scroll = max(0, total - _visible_stats_count())
     next_scroll = current - wheel_y
     return max(0, min(max_scroll, next_scroll))
+
+
+def _visible_stats_count() -> int:
+    """返回右侧统计面板当前能完整显示的表格行数。"""
+
+    table_height = SCREEN_SIZE + PANEL_HEIGHT - STATS_DETAIL_HEIGHT - 124
+    return max(1, table_height // STATS_ROW_HEIGHT)
+
+
+def _short_player(player: str) -> str:
+    """把颜色压缩成表格里更好扫读的短文本。"""
+
+    return "B" if player == "black" else "W"
+
+
+def _compact_number(value: float | int) -> str:
+    """把节点数和 NPS 压成适合侧栏显示的短文本。"""
+
+    number = float(value)
+    if abs(number) >= 1_000_000:
+        return f"{number / 1_000_000:.1f}M"
+    if abs(number) >= 1_000:
+        return f"{number / 1_000:.1f}k"
+    return str(int(number))
+
+
+def _compact_score(score: int) -> str:
+    """压缩评分显示，保留必胜/必败信号。"""
+
+    if abs(score) >= 1_000_000:
+        return "WIN" if score > 0 else "LOSS"
+    return str(score)
+
+
+def _format_ms(value: float) -> str:
+    """格式化耗时，低于 1 秒显示毫秒，高于 1 秒显示秒。"""
+
+    if value >= 1000:
+        return f"{value / 1000:.2f}s"
+    return f"{value:.1f}ms"
+
+
+def _score_color(score: int, source: str) -> tuple[int, int, int]:
+    """返回卡片左侧强调色。"""
+
+    if source == "book":
+        return (91, 214, 154)
+    if score <= -1_000_000:
+        return (255, 102, 102)
+    if score < 0:
+        return (235, 184, 92)
+    return (110, 168, 255)
+
+
+def _score_text_color(score: int) -> tuple[int, int, int]:
+    """返回评分文本颜色。"""
+
+    if score <= -1_000_000:
+        return (255, 122, 122)
+    if score < 0:
+        return (244, 197, 103)
+    if score > 0:
+        return (128, 198, 255)
+    return (216, 220, 225)
 
 
 def _append_log(
