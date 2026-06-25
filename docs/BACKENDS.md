@@ -25,6 +25,8 @@
 
 ```bash
 python main.py benchmark --backend python --time-limit 0.05
+python main.py play --human black --engine python
+python main.py selfplay --games 1 --engine python
 ```
 
 ## 2. `numba`
@@ -51,6 +53,11 @@ Numba 矩阵版。
 python main.py benchmark --backend numba --threads 24 --depth 5 --scenario midgame
 ```
 
+限制：
+
+- 当前只接入 benchmark。
+- 尚未接入 `play` / `selfplay` 的真实对局引擎。
+
 ## 3. `numba_bitboard`
 
 Numba bitboard 极限版。
@@ -74,6 +81,12 @@ Numba bitboard 极限版。
 ```bash
 python main.py benchmark --backend numba_bitboard --threads 24 --depth 5 --scenario midgame
 ```
+
+限制：
+
+- 当前只有 smoke 骨架。
+- 尚未接入 CLI benchmark 后端。
+- 尚未接入 UI 对局。
 
 ## 原则
 

@@ -36,3 +36,11 @@ def test_benchmark_backend_argument():
     assert config.backend == "numba"
     assert config.depth == 6
     assert config.scenario == "midgame"
+
+
+def test_play_engine_argument_is_explicit_python_for_now():
+    argv = _normalize_global_options(["play", "--engine", "python"])
+    args = build_parser().parse_args(argv)
+    config = config_from_args(args)
+
+    assert config.engine == "python"

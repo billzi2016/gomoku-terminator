@@ -49,7 +49,7 @@ def run_play_mode(config) -> int:
     game_id = uuid4().hex
     log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
     log_writer = GameLogWriter(log_path)
-    status = "Human turn" if human_color == BLACK else "AI thinking"
+    status = f"Human turn ({config.engine})" if human_color == BLACK else f"AI thinking ({config.engine})"
 
     undo_button = pygame.Rect(16, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
     restart_button = pygame.Rect(120, SCREEN_SIZE + 22, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -64,7 +64,7 @@ def run_play_mode(config) -> int:
             ai_started_at = time.perf_counter()
             worker.start(session.state, ai_color, AI_DEPTH, config.time_limit, config.rule)
             ai_started = True
-            status = "AI thinking"
+            status = f"AI thinking ({config.engine})"
 
         if ai_started and worker.done():
             result = worker.result()
@@ -104,7 +104,7 @@ def run_play_mode(config) -> int:
                     log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
                     log_writer = GameLogWriter(log_path)
                     ai_started = False
-                    status = "Human turn" if human_color == BLACK else "AI thinking"
+                    status = f"Human turn ({config.engine})" if human_color == BLACK else f"AI thinking ({config.engine})"
                     continue
 
                 if session.winner is not None or session.current_color != human_color or ai_started:
@@ -180,7 +180,7 @@ def _run_selfplay_ui(config) -> int:
     game_id = uuid4().hex
     log_path = Path(config.log_file) if config.log_file else Path(config.log_dir) / f"{game_id}.json"
     log_writer = GameLogWriter(log_path)
-    status = "Selfplay ready"
+    status = f"Selfplay ready ({config.engine})"
     running = True
     ai_started = False
     ai_started_at = 0.0

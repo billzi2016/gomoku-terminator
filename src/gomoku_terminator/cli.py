@@ -19,6 +19,7 @@ class RuntimeConfig:
     log_dir: str
     log_file: str | None
     no_ui: bool
+    engine: str = "python"
     human: str | None = None
     games: int = 1
     max_moves: int = 225
@@ -46,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log-dir", default="data/game_logs")
     parser.add_argument("--log-file")
     parser.add_argument("--no-ui", action="store_true")
+    parser.add_argument("--engine", choices=("python",), default="python")
 
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
@@ -80,6 +82,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         log_dir=args.log_dir,
         log_file=args.log_file,
         no_ui=args.no_ui,
+        engine=args.engine,
         human=getattr(args, "human", None),
         games=getattr(args, "games", 1),
         max_moves=getattr(args, "max_moves", 225),
@@ -146,6 +149,7 @@ def _normalize_global_options(argv: list[str] | None) -> list[str] | None:
         "--opening-book",
         "--log-dir",
         "--log-file",
+        "--engine",
     }
     flag_options = {"--no-ui"}
     mode_index = next((i for i, item in enumerate(argv) if item in modes), None)

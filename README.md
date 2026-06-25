@@ -9,6 +9,8 @@ CPU-only 五子棋 / 连珠 AI 项目。
 
 当前状态：已经具备可运行 MVP，包括 Pygame 人机模式、机机自博弈、JSON 复盘日志、复盘 UI、基础 Renju 禁手可视化接口、基础 Alpha-Beta 搜索、棋形评估、即时成五/防五、基础 VCF/双威胁检测，以及 Numba 并行 benchmark。
 
+注意：当前人机 UI 和机机自博弈实际使用 `--engine python`，也就是人类可读搜索引擎。`--backend numba` 目前只用于 benchmark / 性能压测，还没有接入真实 UI 对局。
+
 ## Quickstart
 
 ### 1. 创建环境
@@ -41,6 +43,12 @@ python main.py benchmark --help
 
 ```bash
 python main.py play --human black
+```
+
+显式指定当前 UI 引擎：
+
+```bash
+python main.py play --human black --engine python
 ```
 
 人类执白：

@@ -46,6 +46,7 @@ python main.py benchmark --help
 | `--opening-book` | `data/opening_book.json` | 默认开局库路径。 |
 | `--log-dir` | `data/game_logs` | 默认对局日志目录。 |
 | `--no-ui` | `false` | 默认开启 UI；只有显式写 `--no-ui` 才后台运行。 |
+| `--engine` | `python` | 人机和机机对局当前使用人类可读 Python 引擎。 |
 | `play --human` | `black` | 人机模式默认人类执黑，AI 执白。 |
 | `selfplay --games` | `1` | 机机模式默认跑 1 局。 |
 | `selfplay --max-moves` | `225` | 机机模式默认最多 225 手。 |
@@ -93,11 +94,13 @@ python main.py benchmark --backend python --rule renju --time-limit 5 --threads 
 
 参数含义：
 
+- `--engine python`：当前人机 UI 实际使用人类可读 Python 搜索引擎。
 - `--human black`：人类玩家执黑，AI 执白。
 - `--human white`：人类玩家执白，AI 执黑。
 - `--rule renju`：使用连珠规则，黑棋有三三、四四、长连禁手，棋盘会显示黑棋禁手红色 X。
 - `--rule freestyle`：使用自由五子棋规则，不启用 Renju 黑棋禁手。
 - 默认规则是 `renju`。也就是说，不写 `--rule` 时就是连珠规则。
+- 注意：`numba` 和 `numba_bitboard` 目前是 benchmark / 性能开发后端，还没有接入人机 UI。
 
 ### 人类执黑，Renju 规则
 
@@ -119,6 +122,12 @@ python main.py play --human white --rule renju
 
 ```bash
 python main.py play --human black --rule renju --time-limit 5
+```
+
+### 显式指定当前 UI 引擎
+
+```bash
+python main.py play --human black --rule renju --engine python --time-limit 5
 ```
 
 ### 自由五子棋规则
@@ -144,10 +153,18 @@ python main.py play --human white --log-file data/game_logs/human_white.json
 
 默认不加 `--no-ui` 时，会打开 Pygame 棋盘观看 AI vs AI。加上 `--no-ui` 时，才是后台批量跑。
 
+当前机机对战实际使用 `--engine python`。Numba 后端目前只用于 benchmark，不用于真实 UI 对局。
+
 ### 可观看机机对战 UI
 
 ```bash
 python main.py selfplay --games 1 --time-limit 1
+```
+
+### 可观看机机对战 UI，显式指定 Python 引擎
+
+```bash
+python main.py selfplay --games 1 --engine python --time-limit 1
 ```
 
 ### 可观看机机对战 UI，限制最多 80 手
@@ -222,6 +239,8 @@ python main.py benchmark --backend python --rule freestyle --time-limit 1
 ## 7. Numba 后端 benchmark
 
 Numba 后端用于 CPU 并行压测。
+
+注意：这里的 `--backend numba` 只影响 benchmark，不等于人机 UI 已使用 Numba 引擎。
 
 ### 24 线程，中盘场景，推荐日常压测
 
@@ -438,22 +457,22 @@ JSON 文件使用 `indent=2`，便于人工阅读和复盘调试。
 
 ```bash
 # 人类执黑，AI 执白，Renju 规则
-python main.py play --human black --rule renju
+python main.py play --human black --rule renju --engine python
 
 # 人类执白，AI 执黑，Renju 规则
-python main.py play --human white --rule renju
+python main.py play --human white --rule renju --engine python
 
 # 人类执黑，AI 最多思考 1 秒
-python main.py play --human black --rule renju --time-limit 1
+python main.py play --human black --rule renju --engine python --time-limit 1
 
 # 人类执黑，AI 最多思考 5 秒
-python main.py play --human black --rule renju --time-limit 5
+python main.py play --human black --rule renju --engine python --time-limit 5
 
 # 人类执白，AI 最多思考 1 秒
-python main.py play --human white --rule renju --time-limit 1
+python main.py play --human white --rule renju --engine python --time-limit 1
 
 # 人类执白，AI 最多思考 5 秒
-python main.py play --human white --rule renju --time-limit 5
+python main.py play --human white --rule renju --engine python --time-limit 5
 
 # 人类执黑，指定日志文件
 python main.py play --human black --rule renju --time-limit 5 --log-file data/game_logs/human_black_renju.json
@@ -488,10 +507,10 @@ python main.py play --human white --rule freestyle --time-limit 5 --log-file dat
 
 ```bash
 # 观看一局 Renju 机机对战
-python main.py selfplay --games 1 --rule renju --time-limit 1
+python main.py selfplay --games 1 --rule renju --engine python --time-limit 1
 
 # 观看一局自由五子棋机机对战
-python main.py selfplay --games 1 --rule freestyle --time-limit 1
+python main.py selfplay --games 1 --rule freestyle --engine python --time-limit 1
 
 # 观看一局 Renju 机机对战，最多 80 手
 python main.py selfplay --games 1 --rule renju --max-moves 80 --time-limit 1
