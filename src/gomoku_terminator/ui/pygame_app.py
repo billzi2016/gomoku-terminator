@@ -71,7 +71,17 @@ def run_play_mode(config) -> int:
 
         if session.winner is None and session.current_color == ai_color and not ai_started:
             ai_started_at = time.perf_counter()
-            worker.start(session.state, ai_color, AI_DEPTH, config.time_limit, config.rule, config.engine, config.threads)
+            worker.start(
+                session.state,
+                ai_color,
+                AI_DEPTH,
+                config.time_limit,
+                config.rule,
+                config.engine,
+                config.threads,
+                session.moves,
+                config.opening_book,
+            )
             ai_started = True
             status = f"AI thinking ({config.engine})"
 
@@ -92,6 +102,7 @@ def run_play_mode(config) -> int:
                         result.nodes,
                         result.score,
                         elapsed_ms,
+                        _engine_log_name(config.engine, result.nodes),
                     )
                     stats.append(_stats_record(move.color, move.row, move.col, result.depth, result.nodes, result.score, elapsed_ms))
                     forbidden_worker.submit(session.state, config.rule)
@@ -135,7 +146,7 @@ def run_play_mode(config) -> int:
                     continue
                 try:
                     move = session.place(row, col, human_color)
-                    _append_log(log_writer, game_id, session, move, config.rule, 0, 0, 0, 0.0)
+                    _append_log(log_writer, game_id, session, move, config.rule, 0, 0, 0, 0.0, "human")
                     forbidden_worker.submit(session.state, config.rule)
                     status = _status_after_move(session, human_color)
                 except ValueError as exc:
@@ -176,12 +187,25 @@ def run_selfplay_mode(config) -> int:
                 config.rule,
                 config.engine,
                 config.threads,
+                session.moves,
+                config.opening_book,
             )
             elapsed_ms = (time.perf_counter() - started) * 1000
             if result.row < 0:
                 break
             move = session.place(result.row, result.col, color)
-            _append_log(writer, game_id, session, move, config.rule, result.depth, result.nodes, result.score, elapsed_ms)
+            _append_log(
+                writer,
+                game_id,
+                session,
+                move,
+                config.rule,
+                result.depth,
+                result.nodes,
+                result.score,
+                elapsed_ms,
+                _engine_log_name(config.engine, result.nodes),
+            )
         print(f"selfplay game {game_number + 1}/{config.games}: {log_path}")
     return 0
 
@@ -231,7 +255,17 @@ def _run_selfplay_ui(config) -> int:
         if not paused and session.winner is None and len(session.moves) < config.max_moves and not ai_started:
             color = session.current_color
             ai_started_at = time.perf_counter()
-            worker.start(session.state, color, AI_DEPTH, config.time_limit, config.rule, config.engine, config.threads)
+            worker.start(
+                session.state,
+                color,
+                AI_DEPTH,
+                config.time_limit,
+                config.rule,
+                config.engine,
+                config.threads,
+                session.moves,
+                config.opening_book,
+            )
             ai_started = True
             status = f"{color_name(color)} thinking"
 
@@ -253,6 +287,7 @@ def _run_selfplay_ui(config) -> int:
                         result.nodes,
                         result.score,
                         elapsed_ms,
+                        _engine_log_name(config.engine, result.nodes),
                     )
                     stats.append(_stats_record(move.color, move.row, move.col, result.depth, result.nodes, result.score, elapsed_ms))
                     forbidden_worker.submit(session.state, config.rule)
@@ -376,6 +411,7 @@ def _append_log(
     nodes: int,
     score: int,
     time_ms: float,
+    engine_name: str,
 ) -> None:
     """追加一条对局日志。"""
 
@@ -395,10 +431,19 @@ def _append_log(
             nps=0.0 if time_ms <= 0 else nodes / (time_ms / 1000),
             score=score,
             time_ms=time_ms,
-            engine="human" if depth == 0 else "negamax",
+            engine=engine_name,
             timestamp=time.time(),
         )
     )
+
+
+def _engine_log_name(engine: str, nodes: int) -> str:
+    """生成对局日志中的引擎名。
+
+    `nodes=0` 表示这手来自开局库，而不是搜索引擎实际展开节点。
+    """
+
+    return f"opening_book:{engine}" if nodes == 0 else engine
 
 
 def _status_after_move(session: GameSession, human_color: int) -> str:

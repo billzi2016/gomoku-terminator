@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from pathlib import Path
+from typing import Any
 
 from gomoku_terminator.board.bitboard import BLACK, BitboardState
 from gomoku_terminator.engine.negamax import SearchResult, search_best_move
 from gomoku_terminator.engine.numba_bitboard_search import bitboard_backend_available, search_bitboard_arrays
+from gomoku_terminator.opening.book import OpeningBook
 from gomoku_terminator.rules.renju_forbidden import is_forbidden_move
 
 
@@ -27,6 +30,8 @@ class AIWorker:
         rule: str = "renju",
         engine: str = "numba_bitboard",
         threads: int = 24,
+        moves: list[Any] | None = None,
+        opening_book: str | None = None,
     ) -> None:
         """启动一次 AI 搜索。
 
@@ -41,6 +46,8 @@ class AIWorker:
             rule,
             engine,
             threads,
+            list(moves or []),
+            opening_book,
         )
 
     def done(self) -> bool:
@@ -66,12 +73,18 @@ def _search_with_engine(
     rule: str,
     engine: str,
     threads: int,
+    moves: list[Any] | None = None,
+    opening_book: str | None = None,
 ) -> SearchResult:
     """按 UI 引擎参数搜索。
 
     默认使用当前最高效的 `numba_bitboard`。Renju 黑棋需要完整禁手搜索；
     高速 bitboard 版还没完全实现禁手时，Renju 黑棋回退 Python，保证合法。
     """
+
+    opening = _lookup_opening_move(state, color, rule, moves or [], opening_book)
+    if opening is not None:
+        return opening
 
     if engine == "numba_bitboard" and bitboard_backend_available():
         if not (rule == "renju" and color == BLACK):
@@ -82,3 +95,32 @@ def _search_with_engine(
                     if not (rule == "renju" and color == BLACK and is_forbidden_move(state, result.row, result.col)):
                         return SearchResult(result.row, result.col, result.score, result.depth, result.nodes)
     return search_best_move(state, color, depth, time_limit, rule)
+
+
+def _lookup_opening_move(
+    state: BitboardState,
+    color: int,
+    rule: str,
+    moves: list[Any],
+    opening_book: str | None,
+) -> SearchResult | None:
+    """查开局库并做最后一层合法性校验。
+
+    开局库是强资产，但它仍然不能绕过规则真源：占用点、Renju 黑棋禁手都要
+    在返回前检查。命中后 depth/nodes 为 0，表示没有消耗搜索节点。
+    """
+
+    if not opening_book:
+        return None
+    path = Path(opening_book)
+    if not path.exists():
+        return None
+    book = OpeningBook.load(path)
+    move = book.lookup_moves(moves)
+    if move is None:
+        return None
+    if not state.is_empty_at(move.row, move.col):
+        return None
+    if rule == "renju" and color == BLACK and is_forbidden_move(state, move.row, move.col):
+        return None
+    return SearchResult(move.row, move.col, 0, 0, 0)

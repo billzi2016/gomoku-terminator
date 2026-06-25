@@ -1,14 +1,749 @@
 {
-  "book_version": "0.1.0",
+  "book_version": "0.2.0",
   "board_size": 15,
   "rule": "renju",
   "coordinate": "row_col_zero_based",
+  "symmetry": "entries_with_expand_symmetry_are_expanded_to_8_transforms_at_load_time",
+  "quality_note": "This file contains traceable canonical Renju opening patterns and conservative first moves. It is not yet a deep professional 4th/5th/6th move theory book.",
   "sources": [
     {
-      "name": "RenjuNet standard openings",
-      "url": "https://www.renju.net/study/openings.php",
-      "trust": "reference"
+      "name": "RenjuNet 26 Renju Openings",
+      "url": "https://www.renju.net/openings/",
+      "starting_url": "https://www.renju.net/starting/",
+      "direct_image_url": "https://www.renju.net/upload/staticfiles/direct_openings.png",
+      "indirect_image_url": "https://www.renju.net/upload/staticfiles/indirect_openings.png",
+      "trust": "official_reference",
+      "usage": "standard opening taxonomy and coordinates"
     }
   ],
-  "entries": []
+  "opening_patterns": [
+    {
+      "code": "1D",
+      "kind": "direct",
+      "english_name": "Kansei",
+      "japanese_name": "寒星",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 5,
+          "col": 7
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "2D",
+      "kind": "direct",
+      "english_name": "Keigetsu",
+      "japanese_name": "渓月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 5,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "3D",
+      "kind": "direct",
+      "english_name": "Sosei",
+      "japanese_name": "疎星",
+      "evaluation": "balanced_slight_white",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 5,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "4D",
+      "kind": "direct",
+      "english_name": "Kagetsu",
+      "japanese_name": "花月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 6,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "5D",
+      "kind": "direct",
+      "english_name": "Zangetsu",
+      "japanese_name": "残月",
+      "evaluation": "advantage_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 6,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "6D",
+      "kind": "direct",
+      "english_name": "Ugetsu",
+      "japanese_name": "雨月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 7,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "7D",
+      "kind": "direct",
+      "english_name": "Kinsei",
+      "japanese_name": "金星",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 7,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "8D",
+      "kind": "direct",
+      "english_name": "Shogetsu",
+      "japanese_name": "松月",
+      "evaluation": "slight_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 8,
+          "col": 7
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "9D",
+      "kind": "direct",
+      "english_name": "Kyugetsu",
+      "japanese_name": "丘月",
+      "evaluation": "slight_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 8,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "10D",
+      "kind": "direct",
+      "english_name": "Shingetsu",
+      "japanese_name": "新月",
+      "evaluation": "advantage_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 8,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "11D",
+      "kind": "direct",
+      "english_name": "Zuigetsu",
+      "japanese_name": "瑞星",
+      "evaluation": "balanced_slight_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 7
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "12D",
+      "kind": "direct",
+      "english_name": "Sangetsu",
+      "japanese_name": "山月",
+      "evaluation": "advantage_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "13D",
+      "kind": "direct",
+      "english_name": "Yusei",
+      "japanese_name": "遊星",
+      "evaluation": "sure_win_white",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "1I",
+      "kind": "indirect",
+      "english_name": "Chosei",
+      "japanese_name": "長星",
+      "evaluation": "balanced_slight_white",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 5,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "2I",
+      "kind": "indirect",
+      "english_name": "Kyogetsu",
+      "japanese_name": "峡月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 6,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "3I",
+      "kind": "indirect",
+      "english_name": "Kosei",
+      "japanese_name": "恒星",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 7,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "4I",
+      "kind": "indirect",
+      "english_name": "Suigetsu",
+      "japanese_name": "水月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 8,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "5I",
+      "kind": "indirect",
+      "english_name": "Ryusei",
+      "japanese_name": "流星",
+      "evaluation": "slight_white",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 9
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "6I",
+      "kind": "indirect",
+      "english_name": "Ungetsu",
+      "japanese_name": "雲月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 7,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "7I",
+      "kind": "indirect",
+      "english_name": "Hogetsu",
+      "japanese_name": "浦月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 8,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "8I",
+      "kind": "indirect",
+      "english_name": "Rangetsu",
+      "japanese_name": "嵐月",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 8
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "9I",
+      "kind": "indirect",
+      "english_name": "Gingetsu",
+      "japanese_name": "銀月",
+      "evaluation": "advantage_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 8,
+          "col": 7
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "10I",
+      "kind": "indirect",
+      "english_name": "Myojo",
+      "japanese_name": "明星",
+      "evaluation": "sure_win_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 7
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "11I",
+      "kind": "indirect",
+      "english_name": "Shagetsu",
+      "japanese_name": "斜月",
+      "evaluation": "slight_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 8,
+          "col": 6
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "12I",
+      "kind": "indirect",
+      "english_name": "Meigetsu",
+      "japanese_name": "名月",
+      "evaluation": "advantage_black",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 6
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    },
+    {
+      "code": "13I",
+      "kind": "indirect",
+      "english_name": "Suisei",
+      "japanese_name": "彗星",
+      "evaluation": "sure_win_white",
+      "moves": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        },
+        {
+          "color": "black",
+          "row": 9,
+          "col": 5
+        }
+      ],
+      "source": "RenjuNet 26 Renju Openings"
+    }
+  ],
+  "entries": [
+    {
+      "name": "empty_board_center",
+      "sequence": [],
+      "move": {
+        "row": 7,
+        "col": 7
+      },
+      "source": "RenjuNet 26 Renju Openings",
+      "trust": "standard_first_move",
+      "expand_symmetry": false,
+      "note": "Renju first move is the center point."
+    },
+    {
+      "name": "direct_second",
+      "sequence": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        }
+      ],
+      "move": {
+        "row": 6,
+        "col": 7
+      },
+      "source": "RenjuNet 26 Renju Openings",
+      "trust": "standard_second_move",
+      "expand_symmetry": true,
+      "note": "Conservative direct second move, enabling direct opening theory."
+    },
+    {
+      "name": "direct_sosei_third",
+      "sequence": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 7
+        }
+      ],
+      "move": {
+        "row": 5,
+        "col": 9
+      },
+      "source": "RenjuNet 26 Renju Openings",
+      "trust": "balanced_standard_opening",
+      "expand_symmetry": true,
+      "note": "Direct 3, Sosei. RenjuNet describes it as mostly equal, slightly better for White."
+    },
+    {
+      "name": "indirect_chosei_third",
+      "sequence": [
+        {
+          "color": "black",
+          "row": 7,
+          "col": 7
+        },
+        {
+          "color": "white",
+          "row": 6,
+          "col": 8
+        }
+      ],
+      "move": {
+        "row": 5,
+        "col": 9
+      },
+      "source": "RenjuNet 26 Renju Openings",
+      "trust": "balanced_standard_opening",
+      "expand_symmetry": true,
+      "note": "Indirect 1, Chosei. RenjuNet describes it as mostly equal, slightly better for White."
+    }
+  ]
 }

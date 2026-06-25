@@ -12,6 +12,8 @@ CPU-only 五子棋 / 连珠 AI 项目。
 
 注意：当前人机 UI 和机机自博弈默认使用 `--engine numba_bitboard`，也就是 4xuint64 Numba bitboard 对局引擎。`--engine python` 仍保留用于规则调试。`--backend numba` 和 `--backend numba_bitboard` 是 benchmark 参数，不要和 UI 的 `--engine` 混淆。
 
+开局库：`data/opening_book.json` 已经包含 Renju 26 个标准开局形和保守前几手推荐，并支持加载时 8 向对称扩展。来源、重建命令和当前边界写在 [data/README.md](/Users/bizi/Desktop/GitHub/gomoku-terminator/data/README.md)。注意它还不是完整职业深度定式库，后续深库必须从许可证清楚的 SGF/RenLib 数据源导入。
+
 ## Quickstart
 
 ### 1. 创建环境
@@ -247,10 +249,11 @@ docker run --rm gomoku-terminator python main.py benchmark --backend python
 - 基础 VCF / 双威胁检测。
 - Numba 根节点并行 benchmark。
 - Numba bitboard benchmark。
+- Renju 26 标准开局形 JSON 库。
 
 仍需继续强化：
 
-- 高质量 Renju 开局库。
+- 高质量 Renju 深度开局库，也就是 4/5/6 手以后带来源和评分的职业变化。
 - 职业级三三 / 四四 / 长连禁手判定。
 - 完整递归 VCF / VCT。
 - 完善 Numba bitboard 的 Renju 黑棋禁手高速过滤，减少回退 Python 的情况。
