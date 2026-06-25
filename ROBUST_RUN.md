@@ -19,13 +19,13 @@ python main.py play --human white --rule renju --engine numba_bitboard --ai-dept
 自由五子棋，人类执黑：
 
 ```bash
-python main.py play --human black --rule freestyle --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+python main.py play --human black --rule freestyle --engine numba_bitboard --ai-depth 5 --time-limit 10 --threads 24
 ```
 
 自由五子棋，人类执白：
 
 ```bash
-python main.py play --human white --rule freestyle --engine numba_bitboard --ai-depth 10 --time-limit 10 --threads 24
+python main.py play --human white --rule freestyle --engine numba_bitboard --ai-depth 5 --time-limit 10 --threads 24
 ```
 
 ## 机机 UI 最终测试
