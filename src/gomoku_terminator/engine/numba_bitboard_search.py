@@ -21,6 +21,10 @@ WIN_SCORE = 1_000_000
 ROOT_MOVE_LIMIT = 40
 DEEP_MOVE_LIMIT = 18
 SHALLOW_MOVE_LIMIT = 12
+EXTREME_ROOT_MOVE_LIMIT = 32
+EXTREME_DEEP_MOVE_LIMIT = 8
+EXTREME_MID_MOVE_LIMIT = 12
+EXTREME_SHALLOW_MOVE_LIMIT = 16
 
 
 @dataclass(frozen=True)
@@ -145,7 +149,7 @@ def search_bitboard_arrays_extreme(
         black_bits = black.astype(np.uint64, copy=True)
         white_bits = white.astype(np.uint64, copy=True)
         started = time.perf_counter()
-        row, col, score, nodes = _parallel_root_search_bits(black_bits, white_bits, int(color), current_depth)
+        row, col, score, nodes = _parallel_root_search_bits_extreme(black_bits, white_bits, int(color), current_depth)
         last_elapsed = time.perf_counter() - started
         total_nodes += int(nodes)
         best = BitboardSearchResult(
@@ -336,6 +340,22 @@ if nb is not None:
         return SHALLOW_MOVE_LIMIT
 
     @nb.njit(cache=False)
+    def _extreme_limit_for_depth(depth: int, is_root: bool) -> int:
+        """extreme 专用候选限制。
+
+        16 层要能落地，必须比 mild 更重视强制手和排序结果。root 保留足够选择，
+        深层则只保留最高价值威胁点，让迭代加深尽可能完成更深层。
+        """
+
+        if is_root:
+            return EXTREME_ROOT_MOVE_LIMIT
+        if depth >= 8:
+            return EXTREME_DEEP_MOVE_LIMIT
+        if depth >= 4:
+            return EXTREME_MID_MOVE_LIMIT
+        return EXTREME_SHALLOW_MOVE_LIMIT
+
+    @nb.njit(cache=False)
     def _sort_moves_bits(
         black: np.ndarray,
         white: np.ndarray,
@@ -524,6 +544,51 @@ if nb is not None:
                 break
         return best, nodes
 
+    @nb.njit(cache=False)
+    def _negamax_bits_extreme(
+        black: np.ndarray,
+        white: np.ndarray,
+        color: int,
+        depth: int,
+        alpha: int,
+        beta: int,
+    ) -> tuple[int, int]:
+        if depth <= 0:
+            return _evaluate_bits(black, white, color), 1
+
+        moves = np.empty(POINT_COUNT, dtype=np.int16)
+        count = _generate_moves_bits(black, white, color, moves)
+        if count == 0:
+            return _evaluate_bits(black, white, color), 1
+        limit = _extreme_limit_for_depth(depth, False)
+        if count > limit:
+            count = limit
+
+        opponent = WHITE if color == BLACK else BLACK
+        own = black if color == BLACK else white
+        best = -1_000_000_000
+        nodes = 1
+        for i in range(count):
+            move = int(moves[i])
+            row = move // BOARD_SIZE
+            col = move - row * BOARD_SIZE
+            _place(black, white, move, color)
+            if _has_five_from(own, row, col):
+                score = WIN_SCORE
+                child_nodes = 1
+            else:
+                child_score, child_nodes = _negamax_bits_extreme(black, white, opponent, depth - 1, -beta, -alpha)
+                score = -child_score
+            _remove(black, white, move, color)
+            nodes += child_nodes
+            if score > best:
+                best = score
+            if score > alpha:
+                alpha = score
+            if alpha >= beta:
+                break
+        return best, nodes
+
     @nb.njit(parallel=True, cache=False)
     def _parallel_root_search_bits(
         black: np.ndarray,
@@ -553,6 +618,56 @@ if nb is not None:
                 nodes[i] = 1
             else:
                 score, child_nodes = _negamax_bits(
+                    local_black,
+                    local_white,
+                    opponent,
+                    depth - 1,
+                    -1_000_000_000,
+                    1_000_000_000,
+                )
+                scores[i] = -score
+                nodes[i] = child_nodes + 1
+
+        best_i = 0
+        best_score = scores[0]
+        total_nodes = 0
+        for i in range(root_count):
+            total_nodes += int(nodes[i])
+            if scores[i] > best_score:
+                best_score = scores[i]
+                best_i = i
+        best_index = int(root_moves[best_i])
+        return best_index // BOARD_SIZE, best_index % BOARD_SIZE, int(best_score), int(total_nodes)
+
+    @nb.njit(parallel=True, cache=False)
+    def _parallel_root_search_bits_extreme(
+        black: np.ndarray,
+        white: np.ndarray,
+        color: int,
+        depth: int,
+    ) -> tuple[int, int, int, int]:
+        root_moves = np.empty(POINT_COUNT, dtype=np.int16)
+        root_count = _generate_moves_bits(black, white, color, root_moves)
+        root_limit = _extreme_limit_for_depth(depth, True)
+        if root_count > root_limit:
+            root_count = root_limit
+        scores = np.empty(root_count, dtype=np.int64)
+        nodes = np.empty(root_count, dtype=np.int64)
+        opponent = WHITE if color == BLACK else BLACK
+
+        for i in prange(root_count):
+            local_black = black.copy()
+            local_white = white.copy()
+            move = int(root_moves[i])
+            row = move // BOARD_SIZE
+            col = move - row * BOARD_SIZE
+            _place(local_black, local_white, move, color)
+            own = local_black if color == BLACK else local_white
+            if _has_five_from(own, row, col):
+                scores[i] = WIN_SCORE
+                nodes[i] = 1
+            else:
+                score, child_nodes = _negamax_bits_extreme(
                     local_black,
                     local_white,
                     opponent,

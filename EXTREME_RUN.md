@@ -74,7 +74,7 @@ python3 -B -m pytest -q -p no:cacheprovider tests/test_cli.py tests/test_ai_work
 
 ## 参数说明
 
-- `--mode extreme`：启用 freestyle 极限搜索模式。内部使用迭代加深，优先返回已完整完成的最深结果。
+- `--mode extreme`：启用 freestyle 极限搜索模式。内部使用递归 VCF、bitboard 极限候选裁剪和迭代加深，优先返回已完整完成的最深结果。
 - `--mode mild`：默认模式，也就是 `ROBUST_RUN.md` 使用的稳定运行模式。
 - `--engine numba_bitboard`：当前默认高性能对局引擎。
 - `--ai-depth 16`：extreme 推荐目标深度。
@@ -83,3 +83,6 @@ python3 -B -m pytest -q -p no:cacheprovider tests/test_cli.py tests/test_ai_work
 - `--rule freestyle`：自由五子棋，无 Renju 黑棋禁手，适合极限搜索。
 - `--no-ui`：关闭 Pygame，用于批量稳定性测试。
 
+## 为什么没有 Renju Extreme
+
+Renju 的黑棋三三、四四、长连禁手需要严格判定有效活三和有效四。这个规则很复杂，不能用粗糙模式硬判。当前 extreme 模式专门面向 freestyle；如果强行把 Renju 放进 16 层 extreme，会因为每层候选都要做高成本禁手过滤而明显变慢，也更容易出现规则误判。Renju 先走 `ROBUST_RUN.md` 的 mild 模式，等禁手检测完全搬进高速 bitboard 后再开放 Renju extreme。

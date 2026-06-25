@@ -52,3 +52,16 @@ def test_basic_vcf_reports_double_threat():
 
     assert result.found
     assert result.line == [(7, 7)]
+
+
+def test_freestyle_vcf_reports_forcing_line():
+    state = BitboardState()
+    for col in (4, 5, 6):
+        state.place(7, col, BLACK)
+    for col in (4, 5, 6):
+        state.place(8, col, BLACK)
+
+    result = search_vcf(state, BLACK, "freestyle", max_depth=6)
+
+    assert result.found
+    assert result.line

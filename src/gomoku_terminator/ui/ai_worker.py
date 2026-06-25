@@ -14,6 +14,7 @@ from gomoku_terminator.engine.numba_bitboard_search import (
 from gomoku_terminator.engine.tactics import double_threat_move, immediate_block_move, immediate_win_move
 from gomoku_terminator.opening.book import OpeningBook
 from gomoku_terminator.rules.renju_forbidden import is_forbidden_move
+from gomoku_terminator.tactical.vcf import search_vcf
 
 
 class AIWorker:
@@ -94,7 +95,7 @@ def _search_with_engine(
     if opening is not None:
         return opening
 
-    tactical = _lookup_tactical_move(state, color, rule, depth)
+    tactical = _lookup_tactical_move(state, color, rule, depth, search_mode)
     if tactical is not None:
         return tactical
 
@@ -112,7 +113,13 @@ def _search_with_engine(
     return search_best_move(state, color, depth, time_limit, rule)
 
 
-def _lookup_tactical_move(state: BitboardState, color: int, rule: str, depth: int) -> SearchResult | None:
+def _lookup_tactical_move(
+    state: BitboardState,
+    color: int,
+    rule: str,
+    depth: int,
+    search_mode: str = "mild",
+) -> SearchResult | None:
     """搜索前的强制战术检查。
 
     高速 bitboard 搜索目前还不够懂“必须走”的战术点。先处理一步胜、一步必防
@@ -130,6 +137,12 @@ def _lookup_tactical_move(state: BitboardState, color: int, rule: str, depth: in
     threat_move = double_threat_move(state, color, rule)
     if threat_move is not None:
         return SearchResult(threat_move[0], threat_move[1], 300_000, depth, 1)
+
+    if search_mode == "extreme" and rule == "freestyle":
+        vcf = search_vcf(state, color, rule, max_depth=max(8, depth))
+        if vcf.found and vcf.line:
+            row, col = vcf.line[0]
+            return SearchResult(row, col, 800_000, depth, len(vcf.line))
 
     return None
 

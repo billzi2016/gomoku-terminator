@@ -16,7 +16,7 @@ CPU-only 五子棋 / 连珠 AI 项目。
 
 棋力说明：UI/selfplay 默认 `--ai-depth 4`；`--time-limit` 和 `--ai-depth` 没有 CLI 硬上限，只做最小值保护。最终测试建议用 `--ai-depth 10 --time-limit 10 --threads 24`。`numba_bitboard` 在进入深搜前会先做即时胜、即时防守和双威胁检查，并在 bitboard 递归内做邻域候选、战术排序和分层 Top-K 截断。当前大致进入中级水准，但还不是职业强度，后续仍要做迭代加深、VCF/VCT 和更完整的 Renju 高速禁手过滤。
 
-搜索模式：默认 `--mode mild`，适合稳定日常对局。自由五子棋可以用 `--mode extreme` 进入迭代加深极限模式，推荐命令写在 [EXTREME_RUN.md](/Users/bizi/Desktop/GitHub/gomoku-terminator/EXTREME_RUN.md)。
+搜索模式：默认 `--mode mild`，适合稳定日常对局。自由五子棋可以用 `--mode extreme` 进入极限模式：先跑递归 VCF，再用 bitboard 极限候选裁剪和迭代加深冲高层。推荐命令写在 [EXTREME_RUN.md](/Users/bizi/Desktop/GitHub/gomoku-terminator/EXTREME_RUN.md)。
 
 ## Example Games
 

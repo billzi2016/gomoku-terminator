@@ -63,6 +63,15 @@ def run_benchmark(config) -> int:
                     (5, 8, WHITE),
                 ):
                     state.place(row, col, color)
+            search_bitboard_arrays_extreme(
+                state.black,
+                state.white,
+                BLACK,
+                1,
+                config.threads,
+                max(0.1, min(config.time_limit, 1.0)),
+            )
+            started = time.perf_counter()
             result = search_bitboard_arrays_extreme(
                 state.black,
                 state.white,
